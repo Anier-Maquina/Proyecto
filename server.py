@@ -1533,7 +1533,7 @@ def main():
     subparsers.add_parser("unlock-admin", help="Desbloquear la cuenta administrador tras intentos fallidos.")
     serve_parser = subparsers.add_parser("serve", help="Iniciar el servidor web.")
     serve_parser.add_argument("--host", default="0.0.0.0")
-    serve_parser.add_argument("--port", type=int, default=8000)
+    serve_parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", "8000")))
     args = parser.parse_args()
 
     if args.command == "create-user":
