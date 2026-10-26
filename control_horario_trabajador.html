@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0f172a">
+    <title>Fichaje del operario | Grupo Ada</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="min-h-screen bg-slate-100 text-slate-800">
+    <main class="mx-auto flex min-h-screen w-full max-w-lg flex-col bg-white shadow-xl">
+        <header class="flex items-center justify-between bg-slate-900 p-5 text-white">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-widest text-blue-300">Grupo Ada</p>
+                <h1 class="mt-1 text-lg font-bold">Control de jornada</h1>
+            </div>
+            <button id="logout-button" type="button" class="rounded-lg bg-slate-800 px-3 py-2 text-sm hover:bg-slate-700" aria-label="Cerrar sesión">
+                <i class="fa-solid fa-right-from-bracket"></i>
+            </button>
+        </header>
+
+        <section class="flex flex-1 flex-col gap-6 p-5 sm:p-7">
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-center">
+                <p class="text-sm text-slate-500">Operario</p>
+                <h2 id="worker-name" class="mt-1 text-xl font-bold">Cargando sesión...</h2>
+                <p id="worker-department" class="mt-1 text-sm capitalize text-slate-500"></p>
+                <p id="current-time" class="mt-4 text-4xl font-extrabold tabular-nums">--:--:--</p>
+                <p id="current-date" class="mt-1 text-sm capitalize text-slate-500"></p>
+                <div class="mt-4 border-t border-slate-200 pt-4">
+                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Estado</span>
+                    <p id="status" class="mt-1 font-semibold text-slate-700">Consultando...</p>
+                    <p id="last-checkin" class="mt-1 text-sm text-slate-500"></p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <button id="start-button" type="button" disabled class="min-h-16 rounded-xl bg-emerald-600 px-5 py-4 text-lg font-bold text-white shadow transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">
+                    <i class="fa-solid fa-play mr-2"></i>Iniciar jornada
+                </button>
+                <button id="stop-button" type="button" disabled class="min-h-16 rounded-xl bg-rose-600 px-5 py-4 text-lg font-bold text-white shadow transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50">
+                    <i class="fa-solid fa-stop mr-2"></i>Detener jornada
+                </button>
+            </div>
+
+            <p id="notice" class="hidden rounded-xl p-4 text-sm" role="status" aria-live="polite"></p>
+            <p class="text-center text-xs leading-relaxed text-slate-500">
+                Para registrar cada fichaje se solicitará tu ubicación. Permite el acceso al GPS cuando el navegador lo indique.
+            </p>
+
+            <section class="mt-auto">
+                <h3 class="mb-3 font-bold">Últimos fichajes</h3>
+                <div id="history" class="space-y-2 text-sm">
+                    <p class="rounded-lg bg-slate-50 p-3 text-slate-500">Los fichajes se almacenan de forma segura en el sistema.</p>
+                </div>
+            </section>
+        </section>
+    </main>
+
+    <script>
+        const startButton = document.getElementById('start-button');
+        const stopButton = document.getElementById('stop-button');
+        const notice = document.getElementById('notice');
+
+        async function api(path, options = {}) {
+            const response = await fetch(path, {
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', ...options.headers },
+                ...options
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.error || 'No se pudo completar la operación.');
+            }
+            return result;
+        }
+
+        function showNotice(message, isError = false) {
+            notice.textContent = message;
+            notice.className = `rounded-xl p-4 text-sm ${isError ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'}`;
+        }
+
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleTimeString('es-ES');
+            document.getElementById('current-date').textContent = now.toLocaleDateString('es-ES', {
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+            });
+        }
+
+        function setWorking(working, recordedAt = null, completedShift = null) {
+            startButton.disabled = working;
+            stopButton.disabled = !working;
+            document.getElementById('status').textContent = working ? 'Jornada en curso' : 'Fuera de jornada';
+            document.getElementById('status').className = `mt-1 font-semibold ${working ? 'text-emerald-700' : 'text-slate-700'}`;
+            const lastCheckin = document.getElementById('last-checkin');
+            if (completedShift && typeof completedShift === 'object') {
+                const startTime = formatDateTime(completedShift.startedAt);
+                const stopTime = formatDateTime(completedShift.stoppedAt);
+                lastCheckin.textContent = startTime && stopTime
+                    ? `Entrada: ${startTime} · Salida: ${stopTime}`
+                    : '';
+            } else {
+                const formattedTime = formatDateTime(recordedAt);
+                lastCheckin.textContent = formattedTime ? `Última entrada: ${formattedTime}` : '';
+            }
+        }
+
+        function formatDateTime(value) {
+            if (typeof value !== 'string' || !value.trim()) return null;
+            const date = new Date(value);
+            return Number.isNaN(date.getTime()) ? null : date.toLocaleString('es-ES');
+        }
+
+        function renderHistory(events) {
+            const history = document.getElementById('history');
+            history.replaceChildren();
+            const validEvents = Array.isArray(events)
+                ? events.filter(event => event && typeof event === 'object')
+                : [];
+            if (validEvents.length === 0) {
+                const empty = document.createElement('p');
+                empty.className = 'rounded-lg bg-slate-50 p-3 text-slate-500';
+                empty.textContent = 'Todavía no hay fichajes registrados.';
+                history.appendChild(empty);
+                return;
+            }
+            validEvents.forEach(event => {
+                const item = document.createElement('div');
+                item.className = 'flex items-center justify-between rounded-lg border border-slate-100 p-3';
+                const label = document.createElement('span');
+                label.className = `font-semibold ${event.event_type === 'start' ? 'text-emerald-700' : 'text-rose-700'}`;
+                label.textContent = event.event_type === 'start' ? 'Entrada' : 'Salida';
+                const formattedTime = formatDateTime(event.recorded_at);
+                if (formattedTime) {
+                    const time = document.createElement('time');
+                    time.className = 'text-slate-500';
+                    time.dateTime = event.recorded_at;
+                    time.textContent = formattedTime;
+                    item.append(label, time);
+                } else {
+                    const unavailableTime = document.createElement('span');
+                    unavailableTime.className = 'text-slate-400';
+                    unavailableTime.textContent = 'Fecha no disponible';
+                    item.append(label, unavailableTime);
+                }
+                history.appendChild(item);
+            });
+        }
+
+        function unavailableLocation() {
+            return {
+                locationAvailable: false,
+                latitude: null,
+                longitude: null,
+                accuracy: null,
+                locationTimestamp: null
+            };
+        }
+
+        function getLocation() {
+            if (!navigator.geolocation) {
+                return Promise.resolve(unavailableLocation());
+            }
+            return new Promise(resolve => {
+                try {
+                    navigator.geolocation.getCurrentPosition(
+                        position => {
+                            const coords = position?.coords;
+                            resolve({
+                                locationAvailable: true,
+                                latitude: coords?.latitude,
+                                longitude: coords?.longitude,
+                                accuracy: coords?.accuracy,
+                                locationTimestamp: new Date().toISOString()
+                            });
+                        },
+                        () => resolve(unavailableLocation()),
+                        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                    );
+                } catch {
+                    resolve(unavailableLocation());
+                }
+            });
+        }
+
+        async function recordAttendance(action) {
+            const button = action === 'start' ? startButton : stopButton;
+            button.disabled = true;
+            try {
+                showNotice('Obteniendo ubicación GPS...');
+                const location = await getLocation();
+                const result = await api(`/api/attendance/${action}`, {
+                    method: 'POST',
+                    body: JSON.stringify(location)
+                });
+                const locationNotice = result?.locationAvailable === false
+                    ? ' La ubicación GPS no está disponible; se usó la hora del servidor.'
+                    : '';
+                setWorking(action === 'start', action === 'start' ? result?.recordedAt : null, result?.shift);
+                if (action === 'stop') {
+                    const shift = result?.shift && typeof result.shift === 'object' ? result.shift : null;
+                    const date = typeof shift?.date === 'string' && shift.date
+                        ? new Date(`${shift.date}T00:00:00Z`)
+                        : null;
+                    const shiftDate = date && !Number.isNaN(date.getTime())
+                        ? date.toLocaleDateString('es-ES', { timeZone: 'UTC' })
+                        : null;
+                    const startTime = formatDateTime(shift?.startedAt);
+                    const stopTime = formatDateTime(shift?.stoppedAt);
+                    const details = shiftDate && startTime && stopTime
+                        ? ` Fecha: ${shiftDate}. Entrada: ${startTime}. Salida: ${stopTime}.`
+                        : '';
+                    const workerName = typeof shift?.worker === 'string' && shift.worker
+                        ? ` para ${shift.worker}`
+                        : '';
+                    showNotice(`Jornada finalizada y guardada correctamente${workerName}.${details}${locationNotice}`);
+                } else {
+                    showNotice(`Entrada registrada correctamente.${locationNotice}`);
+                }
+                try {
+                    const attendance = await api('/api/attendance/mine');
+                    renderHistory(attendance?.events);
+                } catch (error) {
+                    showNotice(`${notice.textContent} No se pudo actualizar el historial: ${error.message}`);
+                }
+            } catch (error) {
+                button.disabled = false;
+                showNotice(error.message, true);
+            }
+        }
+
+        startButton.addEventListener('click', () => recordAttendance('start'));
+        stopButton.addEventListener('click', () => recordAttendance('stop'));
+        document.getElementById('logout-button').addEventListener('click', async () => {
+            try {
+                await api('/api/logout', { method: 'POST', body: '{}' });
+                window.location.replace('/');
+            } catch (error) {
+                showNotice(error.message, true);
+            }
+        });
+
+        (async function initialize() {
+            try {
+                const { user } = await api('/api/session');
+                if (!user || user.role !== 'worker') {
+                    showNotice('Esta pantalla está disponible únicamente para operarios.', true);
+                    return;
+                }
+                document.getElementById('worker-name').textContent = user.display_name;
+                document.getElementById('worker-department').textContent = user.department || '';
+                const attendance = await api('/api/attendance/mine');
+                const events = Array.isArray(attendance?.events) ? attendance.events : [];
+                const latestEntry = events.find(event => event?.event_type === 'start');
+                setWorking(Boolean(attendance?.active), attendance?.active && latestEntry ? latestEntry.recorded_at : null);
+                renderHistory(events);
+                updateClock();
+                window.setInterval(updateClock, 1000);
+            } catch (error) {
+                showNotice(error.message, true);
+            }
+        })();
+    </script>
+</body>
+</html>

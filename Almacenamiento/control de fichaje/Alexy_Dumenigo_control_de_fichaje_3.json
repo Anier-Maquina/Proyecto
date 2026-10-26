@@ -1,0 +1,16 @@
+{
+  "worker": "Alexy Dumenigo",
+  "userId": 3,
+  "shifts": [
+    {
+      "id": 21,
+      "stopEventId": 22,
+      "userId": 3,
+      "worker": "Alexy Dumenigo",
+      "incident": "",
+      "date": "2026-10-25",
+      "startedAt": "2026-10-25T12:50:39+00:00",
+      "stoppedAt": "2026-10-25T12:51:30+00:00"
+    }
+  ]
+}

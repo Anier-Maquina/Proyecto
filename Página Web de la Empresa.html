@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grupo ADA - Limpieza, Jardinería y Conserjería</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ada: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                            800: '#065f46',
+                            900: '#064e3b',
+                            dark: '#0f172a'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased selection:bg-ada-500 selection:text-white">
+
+    <!-- Header / Navbar -->
+    <header class="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md shadow-sm border-b border-slate-100 transition-all duration-300">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-20">
+                <!-- Logo -->
+                <a href="#" class="flex items-center gap-3 group">
+                    <div class="w-11 h-11 rounded-xl bg-gradient-to-tr from-ada-700 to-ada-500 flex items-center justify-center text-white shadow-md shadow-ada-500/20 group-hover:scale-105 transition-transform">
+                        <i class="fa-solid fa-leaf text-xl"></i>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-xl font-extrabold tracking-tight text-slate-900 group-hover:text-ada-700 transition-colors">GRUPO ADA</span>
+                        <span class="text-[10px] font-semibold tracking-wider text-ada-600 uppercase">Servicios Integrales</span>
+                    </div>
+                </a>
+
+                <!-- Desktop Navigation Links -->
+                <nav class="hidden md:flex items-center gap-8">
+                    <a href="#inicio" class="text-sm font-medium text-slate-600 hover:text-ada-600 transition-colors">Inicio</a>
+                    <a href="#servicios" class="text-sm font-medium text-slate-600 hover:text-ada-600 transition-colors">Servicios</a>
+                    <a href="#nosotros" class="text-sm font-medium text-slate-600 hover:text-ada-600 transition-colors">Quiénes somos</a>
+                    <a href="#contacto" class="text-sm font-medium text-slate-600 hover:text-ada-600 transition-colors">Contacto</a>
+                </nav>
+
+                <!-- Call to Action Button -->
+                <div class="hidden md:flex items-center gap-4">
+                    <a href="tel:671845416" class="flex items-center gap-2 text-slate-700 font-semibold text-sm hover:text-ada-700 transition-colors">
+                        <div class="w-8 h-8 rounded-full bg-ada-50 flex items-center justify-center text-ada-600">
+                            <i class="fa-solid fa-phone text-xs"></i>
+                        </div>
+                        <span>671 845 416</span>
+                    </a>
+                    <a href="#contacto" class="px-5 py-2.5 rounded-xl bg-ada-600 hover:bg-ada-700 text-white font-medium text-sm shadow-lg shadow-ada-600/20 hover:shadow-ada-600/30 transition-all transform hover:-translate-y-0.5">
+                        Pedir Presupuesto
+                    </a>
+                </div>
+
+                <!-- Mobile Menu Button -->
+                <button id="mobile-menu-btn" class="md:hidden p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors" aria-label="Abrir menú">
+                    <i class="fa-solid fa-bars text-xl"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="hidden md:hidden bg-white border-b border-slate-100 px-6 py-4 space-y-4 shadow-xl">
+            <a href="#inicio" class="block text-base font-medium text-slate-700 hover:text-ada-600">Inicio</a>
+            <a href="#servicios" class="block text-base font-medium text-slate-700 hover:text-ada-600">Servicios</a>
+            <a href="#nosotros" class="block text-base font-medium text-slate-700 hover:text-ada-600">Quiénes somos</a>
+            <a href="#contacto" class="block text-base font-medium text-slate-700 hover:text-ada-600">Contacto</a>
+            <div class="pt-4 border-t border-slate-100 flex flex-col gap-3">
+                <a href="tel:671845416" class="flex items-center gap-3 text-slate-800 font-semibold">
+                    <div class="w-9 h-9 rounded-full bg-ada-50 flex items-center justify-center text-ada-600">
+                        <i class="fa-solid fa-phone text-sm"></i>
+                    </div>
+                    <span>671 845 416</span>
+                </a>
+                <a href="#contacto" class="w-full text-center py-3 rounded-xl bg-ada-600 text-white font-medium shadow-md shadow-ada-600/20">
+                    Pedir Presupuesto
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section id="inicio" class="relative pt-32 pb-20 md:pt-44 md:pb-32 overflow-hidden bg-gradient-to-b from-ada-50/70 via-white to-white">
+        <!-- Decorative Background Blobs -->
+        <div class="absolute top-0 right-0 -z-10 w-96 h-96 bg-ada-100 rounded-full blur-3xl opacity-60 translate-x-1/3 -translate-y-1/4"></div>
+        <div class="absolute bottom-0 left-0 -z-10 w-96 h-96 bg-emerald-50 rounded-full blur-3xl opacity-60 -translate-x-1/3 translate-y-1/4"></div>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+                <!-- Text Content -->
+                <div class="lg:col-span-7 space-y-6 text-center lg:text-left">
+                    <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-ada-100 text-ada-800 text-xs font-semibold tracking-wide uppercase">
+                        <i class="fa-solid fa-shield-check text-ada-600"></i>
+                        <span>Servicios Profesionales de Máxima Calidad</span>
+                    </div>
+                    <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight leading-[1.15]">
+                        Excelencia y confianza en <span class="text-transparent bg-clip-text bg-gradient-to-r from-ada-700 to-ada-500">Limpieza, Jardinería y Conserjería</span>
+                    </h1>
+                    <p class="text-lg text-slate-600 max-w-2xl mx-auto lg:mx-0 font-normal leading-relaxed">
+                        Ofrecemos soluciones integrales adaptadas a empresas, comunidades de propietarios y particulares. Cuidamos cada detalle para garantizar espacios impecables, seguros y agradables.
+                    </p>
+                    <div class="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2">
+                        <a href="#contacto" class="w-full sm:w-auto px-8 py-4 rounded-xl bg-ada-600 hover:bg-ada-700 text-white font-semibold text-base shadow-xl shadow-ada-600/25 hover:shadow-ada-600/40 transition-all transform hover:-translate-y-0.5 text-center flex items-center justify-center gap-2">
+                            <span>Solicitar Presupuesto</span>
+                            <i class="fa-solid fa-arrow-right text-sm"></i>
+                        </a>
+                        <a href="#servicios" class="w-full sm:w-auto px-8 py-4 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-semibold text-base transition-all text-center flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-circle-chevron-down text-ada-600"></i>
+                            <span>Ver Servicios</span>
+                        </a>
+                    </div>
+
+                    <!-- Trust indicators -->
+                    <div class="pt-8 border-t border-slate-100 grid grid-cols-3 gap-6 max-w-lg mx-auto lg:mx-0">
+                        <div>
+                            <div class="text-2xl font-extrabold text-slate-900">100%</div>
+                            <div class="text-xs text-slate-500 font-medium">Compromiso</div>
+                        </div>
+                        <div>
+                            <div class="text-2xl font-extrabold text-slate-900">Personal</div>
+                            <div class="text-xs text-slate-500 font-medium">Cualificado</div>
+                        </div>
+                        <div>
+                            <div class="text-2xl font-extrabold text-slate-900">Atención</div>
+                            <div class="text-xs text-slate-500 font-medium">Personalizada</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hero Image / Visual Card Grid -->
+                <div class="lg:col-span-5 relative">
+                    <div class="relative mx-auto max-w-md lg:max-w-none">
+                        <!-- Main Card -->
+                        <div class="rounded-3xl bg-white p-4 shadow-2xl shadow-slate-200 border border-slate-100">
+                            <div class="relative h-72 sm:h-80 rounded-2xl overflow-hidden bg-slate-100">
+                                <img src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=800&q=80" alt="Servicios de limpieza y mantenimiento profesional" class="w-full h-full object-cover transform hover:scale-105 transition-transform duration-700" onerror="this.src='https://placehold.co/600x400/0f172a/ffffff?text=Grupo+ADA'">
+                                <div class="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent"></div>
+                                <div class="absolute bottom-4 left-4 right-4 text-white">
+                                    <span class="px-2.5 py-1 rounded-md bg-ada-600 text-xs font-semibold uppercase tracking-wider">Grupo ADA</span>
+                                    <h3 class="text-lg font-bold mt-1">Soluciones integrales para su espacio</h3>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Floating Badge 1 -->
+                        <div class="absolute -bottom-6 -left-6 bg-white p-4 rounded-2xl shadow-xl border border-slate-100 hidden sm:flex items-center gap-3 animate-bounce duration-1000">
+                            <div class="w-12 h-12 rounded-xl bg-ada-50 flex items-center justify-center text-ada-600 text-xl font-bold">
+                                <i class="fa-solid fa-broom"></i>
+                            </div>
+                            <div>
+                                <div class="text-xs font-medium text-slate-400">Servicio estrella</div>
+                                <div class="text-sm font-bold text-slate-800">Limpieza & Mantenimiento</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Services Section -->
+    <section id="servicios" class="py-24 bg-slate-100/60 relative">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-3xl mx-auto mb-16">
+                <span class="text-ada-700 font-semibold text-xs tracking-wider uppercase px-3 py-1 bg-ada-100 rounded-full">Nuestros Servicios</span>
+                <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900 mt-3 tracking-tight">Soluciones especializadas para cada necesidad</h2>
+                <p class="text-slate-600 mt-4 text-base">Cubrimos todas las áreas esenciales para el correcto funcionamiento, estética y pulcritud de sus instalaciones.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- Service 1: Limpieza -->
+                <div class="bg-white rounded-3xl p-8 shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-100 flex flex-col justify-between group">
+                    <div>
+                        <div class="w-14 h-14 rounded-2xl bg-ada-50 flex items-center justify-center text-ada-600 text-2xl mb-6 group-hover:bg-ada-600 group-hover:text-white transition-colors duration-300 shadow-sm">
+                            <i class="fa-solid fa-soap"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-900 mb-3">Limpieza Profesional</h3>
+                        <p class="text-slate-600 text-sm leading-relaxed mb-6">
+                            Servicios exhaustivos y adaptados a horarios y necesidades específicas para garantizar espacios higiénicos y relucientes.
+                        </p>
+                        <ul class="space-y-2.5 text-sm text-slate-600 mb-8">
+                            <li class="flex items-center gap-2">
+                                <i class="fa-solid fa-check text-ada-600 text-xs"></i>
+                                <span>Oficinas y despachos</span>
+                            </li>
+                            <li class="flex items-center gap-2">
+                                <i class="fa-solid fa-check text-ada-600 text-xs"></i>
+                                <span>Comunidades de vecinos</span>
+                            </li>
+                            <li class="flex items-center gap-2">
+                                <i class="fa-solid fa-check text-ada-600 text-xs"></i>
+                                <span>Limpieza de cristales y escaparates</span>
+                            </li>
+                            <li class="flex items-center gap-2">
+                                <i class="fa-solid fa-check text-ada-600 text-xs"></i>
+                                <span>Limpiezas de fin de obra y particulares</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <a href="#contacto" class="inline-flex items-center gap-2 text-sm font-semibold text-ada-700 hover:text-ada-800 group-hover:translate-x-1 transition-all">
+                        <span>Solicitar información</span>
+                        <i class="fa-solid fa-arrow-right text-xs"></i>
+                    </a>
+                </div>
+
+                <!-- Service 2: Jardinería -->
+                <div class="bg-white rounded-3xl p-8 shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-100 flex flex-col justify-between group">
+                    <div>
+                        <div class="w-14 h-14 rounded-2xl bg-ada-50 flex items-center justify-center text-ada-600 text-2xl mb-6 group-hover:bg-ada-600 group-hover:text-white transition-colors duration-300 shadow-sm">
+                            <i class="fa-solid fa-seedling"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-900 mb-3">Jardinería y Paisajismo</h3>
+                        <p class="text-slate-600 text-sm leading-relaxed mb-6">
+                            Cuidado experto de zonas verdes para mantener plantas, césped y árboles en óptimas condiciones estéticas y de salud.
+                        </p>
+                        <ul class="space-y-2.5 text-sm text-slate-600 mb-8">
+                            <li class="flex items-center gap-2">
+                                <i class="fa-solid fa-check text-ada-600 text-xs"></i>
+                                <span>Mantenimiento integral de zonas verdes</span>
+                            </li>
+                            <li class="flex items-center gap-2">
+                                <i class="fa-solid fa-check text-ada-600 text-xs"></i>
+                                <span>Poda de árboles y arbustos</span>
+                            </li>
+                            <li class="flex items-center gap-2">
+                                <i class="fa-solid fa-check text-ada-600 text-xs"></i>
+                                <span>Diseño y plantación de jardines</span>
+                            </li>
+                            <li class="flex items-center gap-2">
+                                <i class="fa-solid fa-check text-ada-600 text-xs"></i>
+                                <span>Sistemas de riego automático</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <a href="#contacto" class="inline-flex items-center gap-2 text-sm font-semibold text-ada-700 hover:text-ada-800 group-hover:translate-x-1 transition-all">
+                        <span>Solicitar información</span>
+                        <i class="fa-solid fa-arrow-right text-xs"></i>
+                    </a>
+                </div>
+
+                <!-- Service 3: Conserjería -->
+                <div class="bg-white rounded-3xl p-8 shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-100 flex flex-col justify-between group">
+                    <div>
+                        <div class="w-14 h-14 rounded-2xl bg-ada-50 flex items-center justify-center text-ada-600 text-2xl mb-6 group-hover:bg-ada-600 group-hover:text-white transition-colors duration-300 shadow-sm">
+                            <i class="fa-solid fa-user-tie"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-900 mb-3">Conserjería y Control</h3>
+                        <p class="text-slate-600 text-sm leading-relaxed mb-6">
+                            Personal cualificado para garantizar la seguridad, orden, atención a vecinos y supervisión general de las instalaciones.
+                        </p>
+                        <ul class="space-y-2.5 text-sm text-slate-600 mb-8">
+                            <li class="flex items-center gap-2">
+                                <i class="fa-solid fa-check text-ada-600 text-xs"></i>
+                                <span>Control de accesos y visitas</span>
+                            </li>
+                            <li class="flex items-center gap-2">
+                                <i class="fa-solid fa-check text-ada-600 text-xs"></i>
+                                <span>Atención cercana a vecinos y clientes</span>
+                            </li>
+                            <li class="flex items-center gap-2">
+                                <i class="fa-solid fa-check text-ada-600 text-xs"></i>
+                                <span>Rondas periódicas de seguridad</span>
+                            </li>
+                            <li class="flex items-center gap-2">
+                                <i class="fa-solid fa-check text-ada-600 text-xs"></i>
+                                <span>Mantenimiento básico preventivo</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <a href="#contacto" class="inline-flex items-center gap-2 text-sm font-semibold text-ada-700 hover:text-ada-800 group-hover:translate-x-1 transition-all">
+                        <span>Solicitar información</span>
+                        <i class="fa-solid fa-arrow-right text-xs"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Why Choose Us / About Us Section -->
+    <section id="nosotros" class="py-24 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+                <!-- Left column: Text content -->
+                <div class="lg:col-span-6 space-y-6">
+                    <span class="text-ada-700 font-semibold text-xs tracking-wider uppercase px-3 py-1 bg-ada-100 rounded-full">¿Por qué elegir Grupo ADA?</span>
+                    <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">Su tranquilidad es nuestra máxima prioridad</h2>
+                    <p class="text-slate-600 text-base leading-relaxed">
+                        En <strong class="text-slate-800">Grupo ADA</strong> entendemos que cada comunidad, oficina o particular requiere un trato diferenciado. Por ello, apostamos por la máxima rigurosidad, profesionalidad y flexibilidad en cada tarea que realizamos.
+                    </p>
+
+                    <div class="space-y-4 pt-2">
+                        <!-- Benefit 1 -->
+                        <div class="flex gap-4">
+                            <div class="w-10 h-10 rounded-xl bg-ada-50 flex items-center justify-center text-ada-600 flex-shrink-0 font-bold">
+                                <i class="fa-solid fa-handshake"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-900">Atención 100% Personalizada</h3>
+                                <p class="text-slate-600 text-sm mt-1">Estudiamos cada caso para ofrecer planes a medida que se ajusten exactamente a sus necesidades operativas y presupuestarias.</p>
+                            </div>
+                        </div>
+
+                        <!-- Benefit 2 -->
+                        <div class="flex gap-4">
+                            <div class="w-10 h-10 rounded-xl bg-ada-50 flex items-center justify-center text-ada-600 flex-shrink-0 font-bold">
+                                <i class="fa-solid fa-user-check"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-900">Personal Altamente Cualificado</h3>
+                                <p class="text-slate-600 text-sm mt-1">Nuestro equipo cuenta con formación continua, compromiso y rigor en el desempeño de todas sus funciones.</p>
+                            </div>
+                        </div>
+
+                        <!-- Benefit 3 -->
+                        <div class="flex gap-4">
+                            <div class="w-10 h-10 rounded-xl bg-ada-50 flex items-center justify-center text-ada-600 flex-shrink-0 font-bold">
+                                <i class="fa-solid fa-medal"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-900">Seriedad y Calidad Garantizada</h3>
+                                <p class="text-slate-600 text-sm mt-1">Supervisamos constantemente los servicios para asegurar unos estándares óptimos de calidad y satisfacción.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right column: Image showcase -->
+                <div class="lg:col-span-6">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-4">
+                            <div class="rounded-3xl overflow-hidden shadow-lg h-48 bg-slate-100">
+                                <img src="https://images.unsplash.com/photo-1628177142898-93e36e4e3a50?auto=format&fit=crop&w=600&q=80" alt="Limpieza profesional" class="w-full h-full object-cover hover:scale-105 transition-transform duration-500" onerror="this.src='https://placehold.co/400x300/0f172a/ffffff?text=Limpieza'">
+                            </div>
+                            <div class="rounded-3xl overflow-hidden shadow-lg h-64 bg-slate-100">
+                                <img src="https://images.unsplash.com/photo-1558904541-efa873a8c68b?auto=format&fit=crop&w=600&q=80" alt="Jardinería" class="w-full h-full object-cover hover:scale-105 transition-transform duration-500" onerror="this.src='https://placehold.co/400x300/047857/ffffff?text=Jardineria'">
+                            </div>
+                        </div>
+                        <div class="space-y-4 pt-8">
+                            <div class="rounded-3xl overflow-hidden shadow-lg h-64 bg-slate-100">
+                                <img src="https://images.unsplash.com/photo-1521791136064-7986c2920216?auto=format&fit=crop&w=600&q=80" alt="Conserjería" class="w-full h-full object-cover hover:scale-105 transition-transform duration-500" onerror="this.src='https://placehold.co/400x300/10b981/ffffff?text=Conserjeria'">
+                            </div>
+                            <div class="rounded-3xl bg-gradient-to-tr from-ada-800 to-ada-600 p-6 shadow-lg text-white flex flex-col justify-center items-center text-center">
+                                <i class="fa-solid fa-leaf text-3xl mb-2 text-ada-200"></i>
+                                <span class="font-bold text-lg">Grupo ADA</span>
+                                <span class="text-xs text-ada-100 mt-1">Confianza y profesionalidad</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="contacto" class="py-24 bg-slate-50 relative">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-3xl mx-auto mb-16">
+                <span class="text-ada-700 font-semibold text-xs tracking-wider uppercase px-3 py-1 bg-ada-100 rounded-full">Póngase en contacto</span>
+                <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900 mt-3 tracking-tight">Solicite su presupuesto sin compromiso</h2>
+                <p class="text-slate-600 mt-4 text-base">Estamos a su disposición para resolver cualquier duda o preparar una propuesta personalizada para usted.</p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-12">
+                <!-- Contact info cards -->
+                <div class="lg:col-span-5 space-y-6">
+                    <div class="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 space-y-6">
+                        <h3 class="text-xl font-bold text-slate-900">Información de contacto</h3>
+                        <p class="text-slate-600 text-sm">Comuníquese directamente con nuestro equipo mediante teléfono o correo electrónico.</p>
+
+                        <div class="space-y-4 pt-2">
+                            <!-- Phone -->
+                            <a href="tel:671845416" class="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 hover:bg-ada-50/50 transition-colors group">
+                                <div class="w-12 h-12 rounded-xl bg-ada-600 text-white flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform shadow-md shadow-ada-600/20">
+                                    <i class="fa-solid fa-phone text-lg"></i>
+                                </div>
+                                <div>
+                                    <div class="text-xs font-medium text-slate-400">Teléfono directo</div>
+                                    <div class="text-base font-bold text-slate-800 group-hover:text-ada-700 transition-colors">671 845 416</div>
+                                </div>
+                            </a>
+
+                            <!-- Email -->
+                            <a href="mailto:info@serviciosgrupoada.es" class="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 hover:bg-ada-50/50 transition-colors group">
+                                <div class="w-12 h-12 rounded-xl bg-ada-600 text-white flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform shadow-md shadow-ada-600/20">
+                                    <i class="fa-solid fa-envelope text-lg"></i>
+                                </div>
+                                <div class="overflow-hidden">
+                                    <div class="text-xs font-medium text-slate-400">Correo electrónico</div>
+                                    <div class="text-sm sm:text-base font-bold text-slate-800 group-hover:text-ada-700 transition-colors truncate">info@serviciosgrupoada.es</div>
+                                </div>
+                            </a>
+                        </div>
+
+                        <div class="pt-6 border-t border-slate-100">
+                            <div class="flex items-center gap-3 text-slate-500 text-sm">
+                                <i class="fa-solid fa-clock text-ada-600"></i>
+                                <span>Atención rápida y profesional</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contact Form -->
+                <div class="lg:col-span-7">
+                    <div class="bg-white rounded-3xl p-8 sm:p-10 shadow-sm border border-slate-100 relative">
+                        <!-- Success Message Box (Hidden by default) -->
+                        <div id="success-alert" class="hidden mb-6 p-4 rounded-2xl bg-ada-50 border border-ada-200 text-ada-800 flex items-center gap-3 animate-fade-in">
+                            <div class="w-8 h-8 rounded-full bg-ada-600 text-white flex items-center justify-center flex-shrink-0">
+                                <i class="fa-solid fa-check text-sm"></i>
+                            </div>
+                            <div>
+                                <div class="font-bold text-sm">¡Mensaje enviado con éxito!</div>
+                                <div class="text-xs text-ada-700">Nos pondremos en contacto con usted a la mayor brevedad posible.</div>
+                            </div>
+                        </div>
+
+                        <form id="contact-form" class="space-y-6">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                <div class="space-y-2">
+                                    <label for="nombre" class="block text-sm font-semibold text-slate-700">Nombre completo *</label>
+                                    <input type="text" id="nombre" required placeholder="Ej. Juan Pérez" class="w-full px-4 py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-ada-500 focus:border-transparent text-slate-800 placeholder-slate-400 text-sm transition-all">
+                                </div>
+                                <div class="space-y-2">
+                                    <label for="telefono" class="block text-sm font-semibold text-slate-700">Teléfono *</label>
+                                    <input type="tel" id="telefono" required placeholder="Ej. 600 000 000" class="w-full px-4 py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-ada-500 focus:border-transparent text-slate-800 placeholder-slate-400 text-sm transition-all">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                <div class="space-y-2">
+                                    <label for="email" class="block text-sm font-semibold text-slate-700">Correo electrónico *</label>
+                                    <input type="email" id="email" required placeholder="Ej. juan@correo.com" class="w-full px-4 py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-ada-500 focus:border-transparent text-slate-800 placeholder-slate-400 text-sm transition-all">
+                                </div>
+                                <div class="space-y-2">
+                                    <label for="servicio" class="block text-sm font-semibold text-slate-700">Servicio de interés</label>
+                                    <select id="servicio" class="w-full px-4 py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-ada-500 focus:border-transparent text-slate-800 text-sm bg-white transition-all">
+                                        <option value="limpieza">Limpieza Profesional</option>
+                                        <option value="jardineria">Jardinería y Paisajismo</option>
+                                        <option value="conserjeria">Conserjería y Control</option>
+                                        <option value="varios">Servicios Combinados / Otros</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="space-y-2">
+                                <label for="mensaje" class="block text-sm font-semibold text-slate-700">Mensaje / Detalles del presupuesto *</label>
+                                <textarea id="mensaje" rows="4" required placeholder="Cuéntenos los detalles de lo que necesita..." class="w-full px-4 py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-ada-500 focus:border-transparent text-slate-800 placeholder-slate-400 text-sm transition-all resize-none"></textarea>
+                            </div>
+
+                            <button type="submit" class="w-full py-4 rounded-xl bg-ada-600 hover:bg-ada-700 text-white font-semibold text-base shadow-xl shadow-ada-600/20 hover:shadow-ada-600/30 transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-paper-plane text-sm"></i>
+                                <span>Enviar Solicitud de Presupuesto</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-white pt-16 pb-12 border-t border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-10 pb-12 border-b border-slate-800">
+                <!-- Col 1: Brand -->
+                <div class="md:col-span-5 space-y-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-ada-700 to-ada-500 flex items-center justify-center text-white">
+                            <i class="fa-solid fa-leaf text-lg"></i>
+                        </div>
+                        <span class="text-xl font-extrabold tracking-tight text-white">GRUPO ADA</span>
+                    </div>
+                    <p class="text-slate-400 text-sm max-w-sm leading-relaxed">
+                        Servicios profesionales de limpieza, jardinería y conserjería. Compromiso, calidad y seriedad en cada proyecto.
+                    </p>
+                </div>
+
+                <!-- Col 2: Quick Links -->
+                <div class="md:col-span-3 space-y-4">
+                    <h4 class="text-sm font-bold tracking-wider uppercase text-slate-200">Enlaces rápidos</h4>
+                    <ul class="space-y-2 text-sm text-slate-400">
+                        <li><a href="#inicio" class="hover:text-white transition-colors">Inicio</a></li>
+                        <li><a href="#servicios" class="hover:text-white transition-colors">Servicios</a></li>
+                        <li><a href="#nosotros" class="hover:text-white transition-colors">Quiénes somos</a></li>
+                        <li><a href="#contacto" class="hover:text-white transition-colors">Contacto</a></li>
+                    </ul>
+                </div>
+
+                <!-- Col 3: Direct Contact -->
+                <div class="md:col-span-4 space-y-4">
+                    <h4 class="text-sm font-bold tracking-wider uppercase text-slate-200">Contacto directo</h4>
+                    <ul class="space-y-3 text-sm text-slate-400">
+                        <li class="flex items-center gap-3">
+                            <i class="fa-solid fa-phone text-ada-500"></i>
+                            <a href="tel:671845416" class="hover:text-white transition-colors font-medium">671 845 416</a>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <i class="fa-solid fa-envelope text-ada-500"></i>
+                            <a href="mailto:info@serviciosgrupoada.es" class="hover:text-white transition-colors font-medium">info@serviciosgrupoada.es</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Bottom bar -->
+            <div class="pt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4">
+                <p>&copy; 2026 Grupo ADA. Todos los derechos reservados.</p>
+                <div class="flex items-center gap-6">
+                    <a href="#" class="hover:text-slate-400 transition-colors">Política de Privacidad</a>
+                    <a href="#" class="hover:text-slate-400 transition-colors">Aviso Legal</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript for Mobile Menu & Form Submission -->
+    <script>
+        // Toggle Mobile Menu
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+
+        mobileMenuBtn.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
+
+        // Close mobile menu when clicking a link
+        const mobileLinks = mobileMenu.querySelectorAll('a');
+        mobileLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                mobileMenu.classList.add('hidden');
+            });
+        });
+
+        // Form submission handling (simulation without alert())
+        const contactForm = document.getElementById('contact-form');
+        const successAlert = document.getElementById('success-alert');
+
+        contactForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            // Show success message
+            successAlert.classList.remove('hidden');
+            contactForm.reset();
+
+            // Scroll to success alert smoothly
+            successAlert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+            // Hide success alert after 6 seconds
+            setTimeout(() => {
+                successAlert.classList.add('hidden');
+            }, 6000);
+        });
+    </script>
+</body>
+</html>

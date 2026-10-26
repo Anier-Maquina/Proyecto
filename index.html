@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Grupo Ada - Servicios Integrales | Portal Corporativo</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script>
         tailwind.config = {
             theme: {
@@ -23,19 +25,135 @@
         .custom-gradient {
             background: linear-gradient(135deg, #1D5699 0%, #3EA89B 100%);
         }
+        .print-file-preview {
+            display: none;
+        }
+        #attendance-map {
+            min-height: 420px;
+        }
         @media print {
-            aside, header, button, .no-print {
+            body.printing-attendance > #login-view,
+            body.printing-attendance aside,
+            body.printing-attendance header,
+            body.printing-attendance #tab-dashboard,
+            body.printing-attendance #tab-workers,
+            body.printing-attendance #tab-structure,
+            body.printing-attendance #tab-inventory,
+            body.printing-attendance #tab-archive,
+            body.printing-attendance #tab-signing,
+            body.printing-attendance #tab-tasks,
+            body.printing-attendance #tab-monthly-finances,
+            body.printing-attendance #tab-attendance > section:first-child,
+            body.printing-attendance #attendance-error,
+            body.printing-attendance .monthly-attendance-controls,
+            body.printing-attendance .monthly-attendance-save {
                 display: none !important;
+            }
+            body.printing-attendance #admin-app,
+            body.printing-attendance #tab-attendance,
+            body.printing-attendance .monthly-attendance-print-area {
+                display: block !important;
+                height: auto !important;
+                overflow: visible !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                background: white !important;
+            }
+            body.printing-attendance main {
+                overflow: visible !important;
+                padding: 0 !important;
+            }
+            body.printing-attendance .monthly-attendance-print-area {
+                border: 0 !important;
+                box-shadow: none !important;
+            }
+            body.printing-attendance .monthly-attendance-print-area table {
+                width: 100% !important;
+            }
+            body.printing-attendance .monthly-attendance-print-area input,
+            body.printing-attendance .monthly-attendance-print-area textarea {
+                border: 0 !important;
+                padding: 0 !important;
+                color: black !important;
+                resize: none !important;
+            }
+        }
+        @media print {
+            body.printing-selected > .flex {
+                display: block !important;
+                height: auto !important;
+                overflow: visible !important;
+            }
+            body.printing-selected aside,
+            body.printing-selected header,
+            body.printing-selected button,
+            body.printing-selected .no-print,
+            body.printing-selected #tab-dashboard,
+            body.printing-selected #tab-structure,
+            body.printing-selected #tab-inventory,
+            body.printing-selected #tab-signing,
+            body.printing-selected #tab-tasks,
+            body.printing-selected #tab-archive .document-row:not(.print-selected) {
+                display: none !important;
+            }
+            body.printing-selected #tab-archive .archive-folder:not(.print-folder-selected) {
+                display: none !important;
+            }
+            body.printing-selected #tab-archive .print-selector {
+                display: none !important;
+            }
+            body.printing-selected #tab-archive .print-file-preview {
+                display: block !important;
+                width: 100% !important;
+                height: 90vh !important;
+                flex-basis: 100% !important;
+                border: 0 !important;
+            }
+            body.printing-selected #tab-archive .print-file-image {
+                display: block !important;
+                max-width: 100% !important;
+                max-height: 90vh !important;
+                object-fit: contain !important;
             }
             body {
                 background: white !important;
                 color: black !important;
             }
+            body.printing-selected #tab-archive {
+                display: block !important;
+            }
+            body.printing-selected main {
+                overflow: visible !important;
+                padding: 0 !important;
+            }
+            body.printing-selected #tab-archive .document-row.print-selected {
+                display: block !important;
+                break-inside: avoid;
+            }
         }
     </style>
 </head>
 <body class="bg-brandLight text-brandDark font-sans antialiased">
-    <div class="flex h-screen overflow-hidden">
+    <section id="login-view" class="flex min-h-screen items-center justify-center px-4 py-10">
+        <form id="login-form" class="w-full max-w-md space-y-5 rounded-2xl bg-white p-8 shadow-xl">
+            <div>
+                <p class="text-sm font-bold uppercase tracking-widest text-brandTeal">Grupo Ada</p>
+                <h1 class="mt-2 text-2xl font-bold text-brandDark">Acceso al portal</h1>
+                <p class="mt-1 text-sm text-gray-500">El administrador accede con su usuario y PIN. El personal debe escribir su nombre exacto y PIN.</p>
+            </div>
+            <label class="block text-sm font-medium text-gray-700" for="login-username">
+                Usuario / nombre del trabajador
+                <input id="login-username" name="username" autocomplete="username" placeholder="administrador o nombre y apellido exactos" required class="mt-1 w-full rounded-xl border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brandBlue">
+            </label>
+            <label class="block text-sm font-medium text-gray-700" for="login-pin">
+                PIN de 4 dígitos
+                <input id="login-pin" name="pin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="one-time-code" placeholder="••••" required class="mt-1 w-full rounded-xl border border-gray-300 px-4 py-3 text-center tracking-[0.4em] focus:outline-none focus:ring-2 focus:ring-brandBlue">
+            </label>
+            <p id="login-error" class="hidden rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert"></p>
+            <button id="login-submit" type="submit" class="w-full rounded-xl bg-brandBlue px-4 py-3 font-semibold text-white hover:bg-blue-800 disabled:opacity-60">Iniciar sesión</button>
+        </form>
+    </section>
+    <div id="admin-app" class="flex h-screen overflow-hidden" style="display:none">
         <aside class="w-64 bg-brandDark text-white flex flex-col shadow-xl z-20">
             <div class="p-5 flex items-center space-x-3 border-b border-gray-700">
                 <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center p-1 shadow-inner">
@@ -48,19 +166,22 @@
             </div>
             <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
                 <a href="#" onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl bg-brandBlue text-white font-medium shadow-md transition-all"><span>📊 Panel Principal</span></a>
+                <a href="#" onclick="switchTab('attendance')" id="nav-attendance" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition-all"><span>📍 Control horario</span></a>
+                <a href="#" onclick="switchTab('workers')" id="nav-workers" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition-all"><span>👥 Operarios y PINs</span></a>
                 <a href="#" onclick="switchTab('structure')" id="nav-structure" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition-all"><span>🏢 Estructura Empresa</span></a>
                 <a href="#" onclick="switchTab('inventory')" id="nav-inventory" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition-all"><span>📦 Gestión Inventario</span></a>
                 <a href="#" onclick="switchTab('archive')" id="nav-archive" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition-all"><span>📁 Archivo e Impresión</span></a>
-                <a href="#" onclick="switchTab('signing')" id="nav-signing" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition-all"><span>✍️ Firma Electrónica RRHH</span></a>
+                <a href="#" onclick="switchTab('signing')" id="nav-signing" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition-all"><span>✍️ Firma Electrónica</span></a>
                 <a href="#" onclick="switchTab('tasks')" id="nav-tasks" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition-all"><span>📅 Tareas y Calendario</span></a>
-                <a href="#" onclick="switchTab('chat')" id="nav-chat" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition-all"><span>💬 Chat Privado</span></a>
+                <a href="#" onclick="switchTab('monthly-finances')" id="nav-monthly-finances" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition-all"><span>💰 Control mensual de gastos e ingresos</span></a>
+                <a href="#" onclick="switchTab('security')" id="nav-security" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition-all"><span>🔒 Bloqueo intentos fallidos</span></a>
             </nav>
             <div class="p-4 border-t border-gray-700 bg-gray-900/50">
                 <div class="flex items-center space-x-3">
                     <div class="w-9 h-9 rounded-full bg-brandTeal flex items-center justify-center font-bold text-white">AD</div>
                     <div class="overflow-hidden">
-                        <p class="text-sm font-semibold truncate">Administrador</p>
-                        <p class="text-xs text-brandTeal truncate">admin@grupoada.com</p>
+                        <p id="admin-user-name" class="text-sm font-semibold truncate">Administrador</p>
+                        <p id="admin-user-login" class="text-xs text-brandTeal truncate"></p>
                     </div>
                 </div>
             </div>
@@ -68,75 +189,401 @@
 
         <div class="flex-1 flex flex-col overflow-hidden">
             <header class="h-16 bg-white shadow-sm flex items-center justify-between px-8 z-10">
-                <h2 id="header-title" class="text-xl font-bold text-brandDark">Panel Principal</h2>
+                <div class="flex min-w-0 items-center gap-3">
+                    <h2 id="header-title" class="text-xl font-bold text-brandDark">Panel Principal</h2>
+                    <a href="https://mail.google.com/mail/?authuser=info%40serviciosgrupoada.es#inbox" target="_blank" rel="noopener noreferrer" class="rounded-lg border border-brandBlue px-3 py-2 text-sm font-semibold text-brandBlue hover:bg-blue-50">Gmail</a>
+                    <a id="invite-link" href="https://wa.me/" target="_blank" rel="noopener noreferrer" class="rounded-lg bg-[#25D366] px-3 py-2 text-sm font-semibold text-white hover:bg-green-600">Invitar</a>
+                </div>
                 <div class="flex items-center space-x-4">
                     <span class="bg-brandTeal/10 text-brandTeal text-xs font-semibold px-3 py-1 rounded-full border border-brandTeal/20">Plan Superior Empresarial</span>
+                    <button id="logout-button" type="button" class="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50">Cerrar sesión</button>
                 </div>
             </header>
 
             <main class="flex-1 overflow-y-auto p-8 bg-brandLight">
                 <!-- DASHBOARD -->
                 <div id="tab-dashboard" class="space-y-6 tab-content">
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
                         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
-                            <div><p class="text-sm text-gray-500 font-medium">Trabajadores Activos</p><h3 class="text-3xl font-bold text-brandDark mt-1" id="stat-workers">24</h3></div>
+                            <div><p class="text-sm text-gray-500 font-medium">Trabajadores Activos</p><h3 class="text-3xl font-bold text-brandDark mt-1" id="stat-workers">0</h3></div>
                             <div class="w-12 h-12 rounded-xl bg-blue-50 text-brandBlue flex items-center justify-center text-xl font-bold">👥</div>
                         </div>
                         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
-                            <div><p class="text-sm text-gray-500 font-medium">Ítems en Inventario</p><h3 class="text-3xl font-bold text-brandDark mt-1" id="stat-inventory">142</h3></div>
+                            <div><p class="text-sm text-gray-500 font-medium">Unidades en Inventario</p><h3 class="text-3xl font-bold text-brandDark mt-1" id="stat-inventory">142</h3></div>
                             <div class="w-12 h-12 rounded-xl bg-teal-50 text-brandTeal flex items-center justify-center text-xl font-bold">📦</div>
                         </div>
+                        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
+                            <div><p class="text-sm text-gray-500 font-medium">Clientes</p><h3 class="text-3xl font-bold text-brandDark mt-1" id="stat-clients">2</h3></div>
+                            <div class="w-12 h-12 rounded-xl bg-teal-50 text-brandTeal flex items-center justify-center text-xl font-bold">🤝</div>
+                        </div>
                     </div>
+                    <section class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-6 border-b border-gray-100">
+                            <div><h3 class="text-lg font-bold text-brandDark">Directorio de trabajadores</h3><p class="text-sm text-gray-500">Personal activo y datos de contacto</p></div>
+                            <button type="button" onclick="openWorkerModal()" class="custom-gradient text-white px-4 py-2 rounded-xl text-sm font-medium shadow">＋ Añadir trabajador</button>
+                        </div>
+                        <div class="overflow-x-auto"><table class="w-full text-left border-collapse min-w-[640px]">
+                            <thead><tr class="bg-gray-50 text-gray-600 text-xs font-semibold uppercase tracking-wider border-b"><th class="p-4">Nombre</th><th class="p-4">Cargo</th><th class="p-4">Contacto</th><th class="p-4 text-right">Acciones</th></tr></thead>
+                            <tbody id="dashboard-workers" class="divide-y divide-gray-100 text-sm"></tbody>
+                        </table></div>
+                    </section>
+                    <section class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div class="p-6 border-b border-gray-100"><h3 class="text-lg font-bold text-brandDark">Inventario general consolidado</h3><p class="text-sm text-gray-500">Artículos y ubicación actual</p></div>
+                        <div class="overflow-x-auto"><table class="w-full text-left border-collapse min-w-[600px]">
+                            <thead><tr class="bg-gray-50 text-gray-600 text-xs font-semibold uppercase tracking-wider border-b"><th class="p-4">Artículo</th><th class="p-4">Categoría</th><th class="p-4">Cantidad</th><th class="p-4">Ubicación</th></tr></thead>
+                            <tbody id="dashboard-inventory" class="divide-y divide-gray-100 text-sm"></tbody>
+                        </table></div>
+                    </section>
+                    <section class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-6 border-b border-gray-100">
+                            <div><h3 class="text-lg font-bold text-brandDark">Directorio de clientes</h3><p class="text-sm text-gray-500">Datos de contacto y dirección física</p></div>
+                            <button type="button" onclick="openClientModal()" class="custom-gradient text-white px-4 py-2 rounded-xl text-sm font-medium shadow">＋ Registrar cliente</button>
+                        </div>
+                        <div class="overflow-x-auto"><table class="w-full text-left border-collapse min-w-[640px]">
+                            <thead><tr class="bg-gray-50 text-gray-600 text-xs font-semibold uppercase tracking-wider border-b"><th class="p-4">Cliente</th><th class="p-4">Contacto</th><th class="p-4">Dirección física</th></tr></thead>
+                            <tbody id="dashboard-clients" class="divide-y divide-gray-100 text-sm"></tbody>
+                        </table></div>
+                    </section>
+                </div>
+
+                <div id="tab-attendance" class="space-y-6 tab-content hidden">
+                    <section class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+                        <div class="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+                            <div class="flex items-center justify-between border-b border-gray-100 p-5">
+                                <div><h3 class="font-bold text-brandDark">Operarios activos hoy</h3><p class="text-sm text-gray-500">Selecciona un operario para centrar el mapa</p></div>
+                                <span id="active-worker-count" class="rounded-full bg-teal-50 px-3 py-1 text-sm font-semibold text-brandTeal">0 activos</span>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full min-w-[560px] text-left text-sm">
+                                    <thead class="bg-gray-50 text-xs uppercase text-gray-500"><tr><th class="p-4">Operario</th><th class="p-4">Departamento</th><th class="p-4">Hora de entrada</th><th class="p-4">Precisión GPS</th></tr></thead>
+                                    <tbody id="active-workers-table" class="divide-y divide-gray-100"></tbody>
+                                </table>
+                                <p id="no-active-workers" class="p-6 text-center text-sm text-gray-500">No hay operarios en jornada.</p>
+                            </div>
+                        </div>
+                        <div class="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+                            <div class="border-b border-gray-100 p-5"><h3 class="font-bold text-brandDark">Ubicación de los operarios</h3><p class="text-sm text-gray-500">Actualización automática cada 10 segundos</p></div>
+                            <div id="attendance-map" class="z-0 w-full" aria-label="Mapa de ubicaciones de operarios"></div>
+                            <div class="flex flex-wrap gap-x-5 gap-y-2 border-t border-gray-100 px-5 py-3 text-xs text-gray-600" aria-label="Leyenda de departamentos">
+                                <span class="inline-flex items-center gap-2"><span class="h-3 w-3 rounded-full border border-slate-600 bg-white"></span>Limpieza</span>
+                                <span class="inline-flex items-center gap-2"><span class="h-3 w-3 rounded-full border border-slate-600 bg-blue-600"></span>Conserjería</span>
+                                <span class="inline-flex items-center gap-2"><span class="h-3 w-3 rounded-full border border-slate-600 bg-green-600"></span>Jardinería</span>
+                            </div>
+                        </div>
+                    </section>
+                    <p id="attendance-error" class="hidden rounded-lg bg-red-50 p-4 text-sm text-red-700" role="alert"></p>
+                    <section class="monthly-attendance-print-area rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+                        <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                            <div>
+                                <h3 class="text-lg font-bold text-brandDark">Resumen mensual de fichajes</h3>
+                                <p id="monthly-attendance-heading" class="mt-1 text-sm text-gray-500">Busca un trabajador y selecciona un mes para consultar sus fichajes.</p>
+                            </div>
+                            <div class="monthly-attendance-controls flex flex-wrap items-end gap-3">
+                                <label for="monthly-attendance-search" class="text-sm font-medium text-gray-700">Trabajador
+                                    <input id="monthly-attendance-search" list="monthly-attendance-workers" type="search" autocomplete="off" placeholder="Nombre del trabajador" class="mt-1 block w-64 max-w-full rounded-xl border border-gray-300 px-3 py-2">
+                                    <datalist id="monthly-attendance-workers"></datalist>
+                                </label>
+                                <label for="monthly-attendance-month" class="text-sm font-medium text-gray-700">Mes
+                                    <input id="monthly-attendance-month" type="month" class="mt-1 block rounded-xl border border-gray-300 bg-white px-3 py-2">
+                                </label>
+                                <button id="monthly-attendance-print" type="button" class="rounded-xl bg-brandBlue px-4 py-2 font-semibold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50" disabled>🖨️ Imprimir</button>
+                            </div>
+                        </div>
+                        <p id="monthly-attendance-status" class="mt-3 hidden rounded-lg p-3 text-sm" role="status" aria-live="polite"></p>
+                        <div class="mt-4 overflow-x-auto">
+                            <table class="w-full min-w-[900px] text-left text-sm">
+                                <thead class="bg-gray-50 text-xs uppercase text-gray-500">
+                                    <tr><th class="p-3">Trabajador</th><th class="p-3">Fecha</th><th class="p-3">Entrada (UTC)</th><th class="p-3">Salida (UTC)</th><th class="p-3">Incidencia</th><th class="p-3 monthly-attendance-save">Acción</th></tr>
+                                </thead>
+                                <tbody id="monthly-attendance-table" class="divide-y divide-gray-100"></tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+
+                <div id="tab-workers" class="space-y-6 tab-content hidden">
+                    <section class="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+                        <div class="border-b border-gray-100 p-6">
+                            <h3 class="text-lg font-bold text-brandDark">Gestión de operarios y PINs</h3>
+                            <p class="mt-1 text-sm text-gray-500">Edita nombres y apellidos. Los cambios se guardan en la base de datos y aparecen inmediatamente en el fichaje.</p>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full min-w-[760px] text-left text-sm">
+                                <thead class="bg-gray-50 text-xs uppercase text-gray-500">
+                                    <tr><th class="p-4">PIN</th><th class="p-4">Departamento</th><th class="p-4">Nombre</th><th class="p-4">Apellido</th><th class="p-4">Acción</th></tr>
+                                </thead>
+                                <tbody id="managed-workers-table" class="divide-y divide-gray-100"></tbody>
+                            </table>
+                        </div>
+                        <p id="workers-management-message" class="hidden p-5 text-sm" role="status" aria-live="polite"></p>
+                    </section>
                 </div>
 
                 <!-- STRUCTURE -->
                 <div id="tab-structure" class="space-y-6 tab-content hidden">
-                    <div class="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                        <div><h3 class="text-lg font-bold text-brandDark">Estructura Organizacional</h3></div>
+                    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <div><h3 class="text-lg font-bold text-brandDark">Estructura Organizacional</h3><p class="text-sm text-gray-500 mt-1">Organiza los equipos y las zonas de trabajo asignadas.</p></div>
+                        <div class="flex flex-wrap gap-2">
+                            <button type="button" onclick="openDepartmentModal()" class="px-4 py-2 rounded-xl border border-brandBlue text-brandBlue text-sm font-medium hover:bg-blue-50">＋ Nuevo departamento</button>
+                            <button type="button" onclick="openWorkerModal()" class="custom-gradient text-white px-4 py-2 rounded-xl text-sm font-medium shadow">＋ Añadir trabajador</button>
+                        </div>
                     </div>
+                    <section class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6" aria-labelledby="general-management-heading">
+                        <p class="text-xs font-semibold uppercase tracking-wider text-brandBlue">Nivel directivo</p>
+                        <h4 id="general-management-heading" class="text-xl font-bold text-brandDark mt-1">Dirección General</h4>
+                        <p class="text-sm text-gray-500 mt-1">Dirección y coordinación general de la empresa</p>
+                        <div class="h-8 w-px bg-gray-200 ml-6" aria-hidden="true"></div>
+                        <div id="department-list" class="grid grid-cols-1 xl:grid-cols-2 gap-5"></div>
+                    </section>
                 </div>
 
                 <!-- INVENTORY -->
                 <div id="tab-inventory" class="space-y-6 tab-content hidden">
-                    <div class="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                        <div><h3 class="text-lg font-bold text-brandDark">Gestión Exclusiva de Inventario</h3><p class="text-sm text-gray-500">Panel reservado para la administración del stock.</p></div>
-                        <button onclick="openInventoryModal()" class="custom-gradient text-white px-4 py-2 rounded-xl text-sm font-medium shadow"><span>➕ Nuevo Artículo</span></button>
+                    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <div><h3 class="text-lg font-bold text-brandDark">Gestión de Inventario por Ubicaciones</h3><p class="text-sm text-gray-500">Cada depósito mantiene su propio inventario.</p></div>
+                        <div class="flex flex-wrap gap-2">
+                            <button type="button" onclick="openLocationCreateModal()" class="px-4 py-2 rounded-xl border border-brandBlue text-brandBlue text-sm font-medium hover:bg-blue-50">＋ Nueva ubicación</button>
+                            <button type="button" onclick="openInventoryModal()" class="custom-gradient text-white px-4 py-2 rounded-xl text-sm font-medium shadow">＋ Nuevo artículo</button>
+                        </div>
                     </div>
-                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                        <table class="w-full text-left border-collapse">
-                            <thead><tr class="bg-gray-50 text-gray-600 text-xs font-semibold uppercase tracking-wider border-b"><th class="p-4">Ítem</th><th class="p-4">Categoría</th><th class="p-4">Cantidad</th><th class="p-4">Ubicación</th><th class="p-4 text-right">Acciones</th></tr></thead>
-                            <tbody class="divide-y divide-gray-100 text-sm" id="inventory-table-body">
-                                <tr><td class="p-4 font-semibold">EPP-001 (Cascos)</td><td class="p-4">Equipamiento</td><td class="p-4">45 unidades</td><td class="p-4">Almacén Central</td><td class="p-4 text-right"><button onclick="deleteInventoryItem(this)" class="text-red-500 font-bold">🗑️</button></td></tr>
-                            </tbody>
-                        </table>
-                    </div>
+                    <div id="inventory-locations" class="space-y-5"></div>
                 </div>
 
                 <!-- ARCHIVE -->
                 <div id="tab-archive" class="space-y-6 tab-content hidden">
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100"><h3 class="text-lg font-bold text-brandDark">Archivo Documental</h3></div>
+                    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <div><h3 class="text-lg font-bold text-brandDark">Archivo Documental</h3><p class="text-sm text-gray-500">Organiza documentos en carpetas y selecciona cuáles imprimir.</p></div>
+                        <div class="flex flex-wrap gap-2 no-print">
+                            <button type="button" onclick="openFolderModal()" class="px-4 py-2 rounded-xl border border-brandBlue text-brandBlue text-sm font-medium hover:bg-blue-50">＋ Nueva carpeta</button>
+                            <button type="button" onclick="openDocumentModal()" class="px-4 py-2 rounded-xl border border-brandBlue text-brandBlue text-sm font-medium hover:bg-blue-50">＋ Nuevo documento</button>
+                            <label for="archive-upload-folder" class="sr-only">Carpeta para el archivo local</label>
+                            <select id="archive-upload-folder" class="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-brandDark" aria-label="Carpeta para el archivo local"></select>
+                            <input id="archive-file-input" type="file" class="hidden" aria-label="Seleccionar documento local">
+                            <button type="button" onclick="document.getElementById('archive-file-input').click()" class="px-4 py-2 rounded-xl border border-brandBlue text-brandBlue text-sm font-medium hover:bg-blue-50">⬆ Cargar archivo</button>
+                            <button type="button" onclick="printSelectedDocuments()" class="custom-gradient text-white px-4 py-2 rounded-xl text-sm font-medium shadow">🖨️ Imprimir seleccionados</button>
+                        </div>
+                    </div>
+                    <div id="archive-folders" class="grid grid-cols-1 xl:grid-cols-2 gap-5"></div>
                 </div>
                 <!-- SIGNING -->
-                <div id="tab-signing" class="space-y-6 tab-content hidden"></div>
+                <div id="tab-signing" class="space-y-6 tab-content hidden">
+                    <section class="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+                        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <h3 class="text-lg font-bold text-brandDark">Firma Electrónica</h3>
+                                <p class="mt-1 text-sm text-gray-500">Solo el administrador puede cargar y firmar estos documentos. Los originales se guardan en el servidor; AutoFirma genera la copia firmada en este equipo y se descarga en la carpeta de descargas del navegador. El panel registra la huella y el estado comunicado por el navegador, pero no verifica criptográficamente la firma.</p>
+                            </div>
+                            <a href="https://firmaelectronica.gob.es/descargas" target="_blank" rel="noopener noreferrer" class="rounded-xl border border-brandBlue px-4 py-2 text-sm font-semibold text-brandBlue hover:bg-blue-50">Descargar AutoFirma</a>
+                        </div>
+                        <form id="signing-upload-form" class="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end">
+                            <label for="signing-upload-file" class="flex-1 text-sm font-medium text-gray-700">Añadir documento de empresa (PDF, máximo 10 MB)
+                                <input id="signing-upload-file" type="file" accept="application/pdf,.pdf" class="mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2 text-sm" required>
+                            </label>
+                            <button id="signing-upload-button" type="submit" class="rounded-xl bg-brandBlue px-5 py-2.5 font-semibold text-white hover:bg-blue-800 disabled:opacity-60">Añadir documento</button>
+                        </form>
+                        <p id="signing-status" class="mt-4 hidden rounded-lg p-3 text-sm" role="status" aria-live="polite"></p>
+                    </section>
+                    <div class="grid gap-6 xl:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.5fr)]">
+                        <section class="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+                            <div class="border-b border-gray-100 p-5">
+                                <h4 class="font-bold text-brandDark">Documentos de empresa</h4>
+                                <p class="mt-1 text-sm text-gray-500">Pendientes y firmados por el administrador.</p>
+                            </div>
+                            <div id="signing-document-list" class="divide-y divide-gray-100"></div>
+                        </section>
+                        <section class="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+                            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 p-5">
+                                <div class="min-w-0">
+                                    <h4 id="signing-preview-title" class="truncate font-bold text-brandDark">Selecciona un documento</h4>
+                                    <p id="signing-preview-meta" class="mt-1 text-xs text-gray-500"></p>
+                                </div>
+                                <button id="signing-sign-button" type="button" class="rounded-xl bg-emerald-700 px-4 py-2.5 font-semibold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50" disabled>Firmar con DNI Electrónico</button>
+                            </div>
+                            <div class="h-[32rem] bg-slate-100">
+                                <iframe id="signing-preview" title="Vista previa del documento para firma" class="h-full w-full border-0" hidden></iframe>
+                                <p id="signing-preview-empty" class="flex h-full items-center justify-center p-6 text-center text-sm text-gray-500">Selecciona un PDF para mostrar la vista previa.</p>
+                            </div>
+                        </section>
+                    </div>
+                </div>
                 <!-- TASKS -->
-                <div id="tab-tasks" class="space-y-6 tab-content hidden"></div>
-                <!-- CHAT -->
-                <div id="tab-chat" class="space-y-6 tab-content hidden"></div>
+                <div id="tab-tasks" class="space-y-6 tab-content hidden">
+                    <section class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
+                            <div><h3 class="text-lg font-bold text-brandDark">Tareas y calendario</h3><p class="text-sm text-gray-500">Selecciona un día para consultar o añadir tareas.</p></div>
+                            <div class="flex items-center gap-3">
+                                <button type="button" id="calendar-prev" aria-label="Mes anterior" class="h-10 w-10 rounded-xl border border-gray-200 text-brandBlue hover:bg-blue-50">←</button>
+                                <h4 id="calendar-month-label" class="min-w-36 text-center font-bold text-brandDark"></h4>
+                                <button type="button" id="calendar-next" aria-label="Mes siguiente" class="h-10 w-10 rounded-xl border border-gray-200 text-brandBlue hover:bg-blue-50">→</button>
+                            </div>
+                        </div>
+                        <div id="calendar-grid" class="grid grid-cols-7 gap-1 sm:gap-2"></div>
+                    </section>
+                    <section class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div><h4 class="font-bold text-brandDark">Agenda del día</h4><p id="selected-date-label" class="text-sm text-gray-500"></p></div>
+                            <button type="button" onclick="openTaskModal(selectedDate)" class="custom-gradient text-white px-4 py-2 rounded-xl text-sm font-medium shadow">＋ Añadir tarea</button>
+                        </div>
+                        <ul id="selected-day-tasks" class="mt-4 space-y-3"></ul>
+                    </section>
+                </div>
+                <div id="tab-monthly-finances" class="tab-content hidden space-y-6">
+                    <section class="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+                        <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                            <div>
+                                <h3 class="text-lg font-bold text-brandDark">Control mensual de gastos e ingresos</h3>
+                                <p class="text-sm text-gray-500">Registra importes mensuales y consulta el beneficio neto calculado en tiempo real.</p>
+                            </div>
+                            <label for="finance-month" class="text-sm font-medium text-gray-700">Mes / Año
+                                <input id="finance-month" type="month" required class="mt-1 block rounded-xl border border-gray-300 px-3 py-2">
+                            </label>
+                        </div>
+                    </section>
+                    <section class="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+                        <div class="mb-4 flex items-center justify-between gap-3">
+                            <div><h3 class="font-bold text-brandDark">1. Ingresos (Facturación comunidades)</h3><p class="text-sm text-gray-500">Añade una línea por comunidad.</p></div>
+                            <button id="finance-add-community" type="button" class="rounded-xl border border-brandBlue px-3 py-2 text-sm font-medium text-brandBlue hover:bg-blue-50">＋ Añadir comunidad</button>
+                        </div>
+                        <div id="finance-communities" class="space-y-3"></div>
+                        <div class="mt-5 flex justify-between border-t border-gray-100 pt-4 font-bold"><span>TOTAL INGRESOS</span><output id="finance-income-total">$0.00</output></div>
+                    </section>
+                    <section class="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+                        <h3 class="mb-4 font-bold text-brandDark">2. Personal y Seguridad Social</h3>
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <label class="text-sm text-gray-700">Nóminas (salarios brutos)<input data-finance-group="personnel" data-finance-key="payroll" type="number" min="0" step="0.01" value="0" class="finance-amount mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2"></label>
+                            <label class="text-sm text-gray-700">Seguridad Social Empresa (TC1)<input data-finance-group="personnel" data-finance-key="employer_social_security" type="number" min="0" step="0.01" value="0" class="finance-amount mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2"></label>
+                            <label class="text-sm text-gray-700">Seguros de accidentes de convenio y Mutua<input data-finance-group="personnel" data-finance-key="accident_insurance" type="number" min="0" step="0.01" value="0" class="finance-amount mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2"></label>
+                            <label class="text-sm text-gray-700">Prevención de Riesgos Laborales (PRL) / Revisiones<input data-finance-group="personnel" data-finance-key="occupational_risk_prevention" type="number" min="0" step="0.01" value="0" class="finance-amount mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2"></label>
+                        </div>
+                    </section>
+                    <section class="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+                        <h3 class="mb-4 font-bold text-brandDark">3. Impuestos y Fiscalidad</h3>
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <label class="text-sm text-gray-700">IVA Trimestral (Mod. 303/390)<input data-finance-group="taxes" data-finance-key="quarterly_vat" type="number" min="0" step="0.01" value="0" class="finance-amount mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2"></label>
+                            <label class="text-sm text-gray-700">Declaración Trimestral IRPF (Mod. 111/130)<input data-finance-group="taxes" data-finance-key="quarterly_income_tax" type="number" min="0" step="0.01" value="0" class="finance-amount mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2"></label>
+                            <label class="text-sm text-gray-700">Impuesto de Sociedades / IRPF Anual<input data-finance-group="taxes" data-finance-key="annual_corporate_tax" type="number" min="0" step="0.01" value="0" class="finance-amount mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2"></label>
+                        </div>
+                    </section>
+                    <section class="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+                        <h3 class="mb-4 font-bold text-brandDark">4. Operativa, Materiales y Gestión</h3>
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <label class="text-sm text-gray-700">Artículos de limpieza y productos químicos<input data-finance-group="operations" data-finance-key="cleaning_supplies" type="number" min="0" step="0.01" value="0" class="finance-amount mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2"></label>
+                            <label class="text-sm text-gray-700">Maquinaria y herramientas (jardinería) y reparaciones<input data-finance-group="operations" data-finance-key="machinery_repairs" type="number" min="0" step="0.01" value="0" class="finance-amount mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2"></label>
+                            <label class="text-sm text-gray-700">Vestuario laboral y EPIs<input data-finance-group="operations" data-finance-key="workwear_ppe" type="number" min="0" step="0.01" value="0" class="finance-amount mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2"></label>
+                            <label class="text-sm text-gray-700">Transporte, combustible y desplazamientos<input data-finance-group="operations" data-finance-key="transport_fuel" type="number" min="0" step="0.01" value="0" class="finance-amount mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2"></label>
+                            <label class="text-sm text-gray-700">Gestoría<input data-finance-group="operations" data-finance-key="management" type="number" min="0" step="0.01" value="0" class="finance-amount mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2"></label>
+                            <label class="text-sm text-gray-700">Oficina virtual / Teléfono / Internet / Gastos varios<input data-finance-group="operations" data-finance-key="office_telecom_misc" type="number" min="0" step="0.01" value="0" class="finance-amount mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2"></label>
+                        </div>
+                    </section>
+                    <section class="rounded-2xl border border-brandBlue/20 bg-white p-6 shadow-sm">
+                        <div class="grid gap-4 sm:grid-cols-3">
+                            <div><p class="text-sm text-gray-500">Total de Ingresos Mensuales</p><output id="finance-summary-income" class="text-xl font-bold text-emerald-700">$0.00</output></div>
+                            <div><p class="text-sm text-gray-500">Total de Gastos Mensuales</p><output id="finance-expense-total" class="text-xl font-bold text-rose-700">$0.00</output></div>
+                            <div><p class="text-sm text-gray-500">Beneficio Neto Real del Mes</p><output id="finance-net-profit" class="text-2xl font-extrabold text-brandBlue">$0.00</output></div>
+                        </div>
+                        <p id="finance-save-status" class="mt-4 hidden rounded-lg p-3 text-sm" role="status" aria-live="polite"></p>
+                        <button id="finance-save" type="button" class="mt-5 rounded-xl bg-brandBlue px-5 py-3 font-semibold text-white hover:bg-blue-800 disabled:opacity-60">Guardar / Registrar mes</button>
+                    </section>
+                </div>
+                <div id="tab-security" class="tab-content hidden space-y-6">
+                    <section class="rounded-2xl border border-amber-200 bg-white p-6 shadow-sm" aria-labelledby="admin-security-heading">
+                        <div class="mb-5">
+                            <h3 id="admin-security-heading" class="text-lg font-bold text-brandDark">Bloqueo intentos fallidos</h3>
+                            <p class="mt-1 text-sm text-gray-600">Se registran los PIN incorrectos y los rechazos del inicio de sesión de administrador. El bloqueo por IP solo afecta a la cuenta de administración, no a los fichajes de los operarios.</p>
+                            <p class="mt-2 text-xs text-amber-800">La IP mostrada es la que recibe el servidor; detrás de un proxy o una red compartida puede corresponder a varios usuarios.</p>
+                        </div>
+                        <form id="admin-block-ip-form" class="flex flex-col gap-3 sm:flex-row sm:items-end">
+                            <label for="admin-block-ip" class="flex-1 text-sm font-medium text-gray-700">Dirección IP a bloquear
+                                <input id="admin-block-ip" type="text" inputmode="url" autocomplete="off" maxlength="45" placeholder="Ej.: 192.168.1.25 o 2001:db8::1" class="mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2" required>
+                            </label>
+                            <button id="admin-block-ip-button" type="submit" class="rounded-xl bg-rose-700 px-5 py-2.5 font-semibold text-white hover:bg-rose-800 disabled:opacity-60">Bloquear IP</button>
+                            <button id="admin-security-refresh" type="button" class="rounded-xl border border-brandBlue px-5 py-2.5 font-semibold text-brandBlue hover:bg-blue-50">Actualizar</button>
+                        </form>
+                        <p id="admin-security-status" class="mt-4 hidden rounded-lg p-3 text-sm" role="status" aria-live="polite"></p>
+                        <div class="mt-5 grid gap-6 xl:grid-cols-2">
+                            <div class="overflow-x-auto">
+                                <h4 class="mb-2 font-semibold text-brandDark">Intentos recientes (últimos 200)</h4>
+                                <table class="w-full min-w-[32rem] text-left text-sm">
+                                    <thead class="bg-gray-50 text-gray-600"><tr><th class="p-3">Fecha y hora (UTC)</th><th class="p-3">IP</th><th class="p-3">Tipo de fallo</th></tr></thead>
+                                    <tbody id="admin-login-attempts" class="divide-y divide-gray-100"></tbody>
+                                </table>
+                                <p id="admin-login-attempts-empty" class="hidden py-4 text-sm text-gray-500">No hay intentos fallidos registrados.</p>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <h4 class="mb-2 font-semibold text-brandDark">Direcciones IP bloqueadas</h4>
+                                <table class="w-full min-w-[22rem] text-left text-sm">
+                                    <thead class="bg-gray-50 text-gray-600"><tr><th class="p-3">IP</th><th class="p-3">Bloqueada desde (UTC)</th><th class="p-3">Acción</th></tr></thead>
+                                    <tbody id="admin-blocked-ips" class="divide-y divide-gray-100"></tbody>
+                                </table>
+                                <p id="admin-blocked-ips-empty" class="hidden py-4 text-sm text-gray-500">No hay direcciones IP bloqueadas.</p>
+                            </div>
+                        </div>
+                    </section>
+                </div>
             </main>
         </div>
     </div>
 
-    <!-- MODAL: INVENTORY -->
-    <div id="inventory-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center">
-        <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
-            <div class="flex justify-between items-center"><h3 class="font-bold text-lg text-brandDark">Añadir Artículo al Inventario</h3><button onclick="closeInventoryModal()" class="font-bold">✕</button></div>
-            <form onsubmit="handleInventorySubmit(event)" class="space-y-3">
-                <div><label class="block text-xs font-semibold text-gray-600 mb-1">Código y Nombre</label><input type="text" id="inv-name" placeholder="Ej. HER-050" class="w-full px-4 py-2 border rounded-xl text-sm" required></div>
-                <div><label class="block text-xs font-semibold text-gray-600 mb-1">Categoría</label><input type="text" id="inv-cat" placeholder="Ej. Herramientas" class="w-full px-4 py-2 border rounded-xl text-sm" required></div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div><label class="block text-xs font-semibold text-gray-600 mb-1">Cantidad</label><input type="text" id="inv-qty" placeholder="10 unidades" class="w-full px-4 py-2 border rounded-xl text-sm" required></div>
-                    <div><label class="block text-xs font-semibold text-gray-600 mb-1">Ubicación</label><input type="text" id="inv-loc" placeholder="Depósito B" class="w-full px-4 py-2 border rounded-xl text-sm" required></div>
+    <!-- MODAL: WORKER -->
+    <div id="worker-modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="worker-modal-title">
+        <div class="bg-white w-full max-w-lg rounded-2xl p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center"><h3 id="worker-modal-title" class="font-bold text-lg text-brandDark">Añadir trabajador</h3><button type="button" onclick="closeWorkerModal()" aria-label="Cerrar" class="font-bold text-gray-500 hover:text-brandDark">✕</button></div>
+            <form id="worker-form" class="space-y-3">
+                <div><label for="worker-name" class="block text-xs font-semibold text-gray-600 mb-1">Nombre completo</label><input type="text" id="worker-name" name="name" autocomplete="name" maxlength="100" class="w-full px-4 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brandBlue" required></div>
+                <div><label for="worker-role" class="block text-xs font-semibold text-gray-600 mb-1">Cargo</label><input type="text" id="worker-role" name="role" maxlength="100" class="w-full px-4 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brandBlue" required></div>
+                <div><label for="worker-contact" class="block text-xs font-semibold text-gray-600 mb-1">Contacto (teléfono o correo)</label><input type="text" id="worker-contact" name="contact" maxlength="120" class="w-full px-4 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brandBlue" required></div>
+                <div><label for="worker-department" class="block text-xs font-semibold text-gray-600 mb-1">Departamento</label><select id="worker-department" name="department" class="w-full px-4 py-2 border rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brandBlue" required></select></div>
+                <p id="worker-form-error" class="hidden text-sm text-red-600" role="alert"></p>
+                <div class="flex space-x-3 pt-2">
+                    <button type="button" onclick="closeWorkerModal()" class="flex-1 bg-gray-100 text-gray-600 py-2 rounded-xl text-sm">Cancelar</button>
+                    <button type="submit" class="flex-1 custom-gradient text-white py-2 rounded-xl text-sm font-medium">Guardar trabajador</button>
                 </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: DEPARTMENT -->
+    <div id="department-modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="department-modal-title">
+        <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center"><h3 id="department-modal-title" class="font-bold text-lg text-brandDark">Crear departamento</h3><button type="button" onclick="closeDepartmentModal()" aria-label="Cerrar" class="font-bold text-gray-500 hover:text-brandDark">✕</button></div>
+            <form id="department-form" class="space-y-3">
+                <div><label for="department-name" class="block text-xs font-semibold text-gray-600 mb-1">Nombre del departamento</label><input type="text" id="department-name" name="name" maxlength="80" class="w-full px-4 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brandBlue" required></div>
+                <p id="department-form-error" class="hidden text-sm text-red-600" role="alert"></p>
+                <div class="flex space-x-3 pt-2">
+                    <button type="button" onclick="closeDepartmentModal()" class="flex-1 bg-gray-100 text-gray-600 py-2 rounded-xl text-sm">Cancelar</button>
+                    <button type="submit" class="flex-1 custom-gradient text-white py-2 rounded-xl text-sm font-medium">Crear departamento</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: WORK LOCATION -->
+    <div id="location-modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="location-modal-title">
+        <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center"><div><h3 id="location-modal-title" class="font-bold text-lg text-brandDark">Asignar zona de trabajo</h3><p id="location-worker-name" class="text-sm text-gray-500"></p></div><button type="button" onclick="closeLocationModal()" aria-label="Cerrar" class="font-bold text-gray-500 hover:text-brandDark">✕</button></div>
+            <form id="location-form" class="space-y-3">
+                <div><label for="location-address" class="block text-xs font-semibold text-gray-600 mb-1">Dirección o comunidad</label><textarea id="location-address" name="address" rows="3" maxlength="240" placeholder="Ej. Comunidad El Bosque, calle Principal, zona norte" class="w-full px-4 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brandBlue" required></textarea></div>
+                <p id="location-form-error" class="hidden text-sm text-red-600" role="alert"></p>
+                <div class="flex space-x-3 pt-2">
+                    <button type="button" onclick="closeLocationModal()" class="flex-1 bg-gray-100 text-gray-600 py-2 rounded-xl text-sm">Cancelar</button>
+                    <button type="submit" class="flex-1 custom-gradient text-white py-2 rounded-xl text-sm font-medium">Asignar ubicación</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: INVENTORY -->
+    <div id="inventory-modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="inventory-modal-title">
+        <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center"><h3 id="inventory-modal-title" class="font-bold text-lg text-brandDark">Añadir artículo al inventario</h3><button type="button" onclick="closeInventoryModal()" aria-label="Cerrar" class="font-bold">✕</button></div>
+            <form id="inventory-form" class="space-y-3">
+                <div><label for="inv-name" class="block text-xs font-semibold text-gray-600 mb-1">Código y nombre</label><input type="text" id="inv-name" maxlength="120" placeholder="Ej. HER-050" class="w-full px-4 py-2 border rounded-xl text-sm" required></div>
+                <div><label for="inv-cat" class="block text-xs font-semibold text-gray-600 mb-1">Categoría</label><input type="text" id="inv-cat" maxlength="80" placeholder="Ej. Herramientas" class="w-full px-4 py-2 border rounded-xl text-sm" required></div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div><label for="inv-qty" class="block text-xs font-semibold text-gray-600 mb-1">Cantidad</label><input type="number" id="inv-qty" min="1" step="1" placeholder="10" class="w-full px-4 py-2 border rounded-xl text-sm" required></div>
+                    <div><label for="inv-location" class="block text-xs font-semibold text-gray-600 mb-1">Ubicación</label><select id="inv-location" class="w-full px-4 py-2 border rounded-xl text-sm bg-white" required></select></div>
+                </div>
+                <p id="inventory-form-error" class="hidden text-sm text-red-600" role="alert"></p>
                 <div class="flex space-x-3 pt-2">
                     <button type="button" onclick="closeInventoryModal()" class="flex-1 bg-gray-100 text-gray-600 py-2 rounded-xl text-sm">Cancelar</button>
                     <button type="submit" class="flex-1 custom-gradient text-white py-2 rounded-xl text-sm font-medium">Guardar</button>
@@ -145,50 +592,2189 @@
         </div>
     </div>
 
+    <!-- MODAL: INVENTORY LOCATION -->
+    <div id="location-create-modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="location-create-title">
+        <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center"><h3 id="location-create-title" class="font-bold text-lg text-brandDark">Crear ubicación</h3><button type="button" onclick="closeLocationCreateModal()" aria-label="Cerrar" class="font-bold">✕</button></div>
+            <form id="location-create-form" class="space-y-3">
+                <div><label for="location-create-name" class="block text-xs font-semibold text-gray-600 mb-1">Nombre del depósito o ubicación</label><input type="text" id="location-create-name" maxlength="100" placeholder="Ej. Depósito Norte" class="w-full px-4 py-2 border rounded-xl text-sm" required></div>
+                <p id="location-create-error" class="hidden text-sm text-red-600" role="alert"></p>
+                <div class="flex space-x-3 pt-2"><button type="button" onclick="closeLocationCreateModal()" class="flex-1 bg-gray-100 text-gray-600 py-2 rounded-xl text-sm">Cancelar</button><button type="submit" class="flex-1 custom-gradient text-white py-2 rounded-xl text-sm font-medium">Crear ubicación</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: CLIENT -->
+    <div id="attendance-edit-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="attendance-edit-title">
+        <div class="w-full max-w-lg space-y-4 rounded-2xl bg-white p-6 shadow-2xl">
+            <div class="flex items-center justify-between">
+                <div><h3 id="attendance-edit-title" class="text-lg font-bold text-brandDark">Editar fichaje</h3><p class="text-sm text-gray-500">Los cambios se guardan en el registro del servidor.</p></div>
+                <button type="button" id="attendance-edit-close" aria-label="Cerrar" class="font-bold text-gray-500 hover:text-brandDark">✕</button>
+            </div>
+            <form id="attendance-edit-form" class="space-y-3">
+                <label class="block text-sm text-gray-700">Nombre del trabajador<input id="attendance-edit-worker" type="text" maxlength="100" required class="mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2"></label>
+                <label class="block text-sm text-gray-700">Fecha<input id="attendance-edit-date" type="date" required class="mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2"></label>
+                <div class="grid gap-3 sm:grid-cols-2">
+                    <label class="block text-sm text-gray-700">Hora de entrada (UTC)<input id="attendance-edit-start" type="time" step="1" required class="mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2"></label>
+                    <label class="block text-sm text-gray-700">Hora de salida (UTC)<input id="attendance-edit-stop" type="time" step="1" class="mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2"></label>
+                </div>
+                <label class="block text-sm text-gray-700">Incidencia (opcional)<textarea id="attendance-edit-incident" rows="3" maxlength="500" class="mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2"></textarea></label>
+                <p id="attendance-edit-error" class="hidden text-sm text-red-600" role="alert"></p>
+                <div class="flex gap-3 pt-2">
+                    <button type="button" id="attendance-edit-cancel" class="flex-1 rounded-xl bg-gray-100 py-2 text-sm text-gray-600">Cancelar</button>
+                    <button type="submit" id="attendance-edit-save" class="flex-1 rounded-xl bg-brandBlue py-2 text-sm font-medium text-white">Guardar cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: CLIENT -->
+    <div id="client-modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="client-modal-title">
+        <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center"><h3 id="client-modal-title" class="font-bold text-lg text-brandDark">Registrar cliente</h3><button type="button" onclick="closeClientModal()" aria-label="Cerrar" class="font-bold">✕</button></div>
+            <form id="client-form" class="space-y-3">
+                <div><label for="client-name" class="block text-xs font-semibold text-gray-600 mb-1">Nombre o razón social</label><input type="text" id="client-name" maxlength="120" class="w-full px-4 py-2 border rounded-xl text-sm" required></div>
+                <div><label for="client-contact" class="block text-xs font-semibold text-gray-600 mb-1">Contacto (teléfono o correo)</label><input type="text" id="client-contact" maxlength="120" class="w-full px-4 py-2 border rounded-xl text-sm" required></div>
+                <div><label for="client-address" class="block text-xs font-semibold text-gray-600 mb-1">Dirección física</label><textarea id="client-address" rows="2" maxlength="240" class="w-full px-4 py-2 border rounded-xl text-sm" required></textarea></div>
+                <p id="client-form-error" class="hidden text-sm text-red-600" role="alert"></p>
+                <div class="flex space-x-3 pt-2"><button type="button" onclick="closeClientModal()" class="flex-1 bg-gray-100 text-gray-600 py-2 rounded-xl text-sm">Cancelar</button><button type="submit" class="flex-1 custom-gradient text-white py-2 rounded-xl text-sm font-medium">Guardar cliente</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: ARCHIVE FOLDER -->
+    <div id="folder-modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="folder-modal-title">
+        <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center"><h3 id="folder-modal-title" class="font-bold text-lg text-brandDark">Crear carpeta</h3><button type="button" onclick="closeFolderModal()" aria-label="Cerrar" class="font-bold">✕</button></div>
+            <form id="folder-form" class="space-y-3">
+                <div><label for="folder-name" class="block text-xs font-semibold text-gray-600 mb-1">Nombre de carpeta</label><input type="text" id="folder-name" maxlength="100" class="w-full px-4 py-2 border rounded-xl text-sm" required></div>
+                <p id="folder-form-error" class="hidden text-sm text-red-600" role="alert"></p>
+                <div class="flex space-x-3 pt-2"><button type="button" onclick="closeFolderModal()" class="flex-1 bg-gray-100 text-gray-600 py-2 rounded-xl text-sm">Cancelar</button><button type="submit" class="flex-1 custom-gradient text-white py-2 rounded-xl text-sm font-medium">Crear carpeta</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: ARCHIVE DOCUMENT -->
+    <div id="document-modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="document-modal-title">
+        <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center"><h3 id="document-modal-title" class="font-bold text-lg text-brandDark">Registrar documento</h3><button type="button" onclick="closeDocumentModal()" aria-label="Cerrar" class="font-bold">✕</button></div>
+            <form id="document-form" class="space-y-3">
+                <div><label for="document-name" class="block text-xs font-semibold text-gray-600 mb-1">Nombre del documento</label><input type="text" id="document-name" maxlength="140" placeholder="Ej. Contrato de servicio.pdf" class="w-full px-4 py-2 border rounded-xl text-sm" required></div>
+                <div><label for="document-folder" class="block text-xs font-semibold text-gray-600 mb-1">Carpeta</label><select id="document-folder" class="w-full px-4 py-2 border rounded-xl text-sm bg-white" required></select></div>
+                <p id="document-form-error" class="hidden text-sm text-red-600" role="alert"></p>
+                <div class="flex space-x-3 pt-2"><button type="button" onclick="closeDocumentModal()" class="flex-1 bg-gray-100 text-gray-600 py-2 rounded-xl text-sm">Cancelar</button><button type="submit" class="flex-1 custom-gradient text-white py-2 rounded-xl text-sm font-medium">Guardar documento</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: WORKER DOCUMENTATION -->
+    <div id="worker-documents-modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="worker-documents-title">
+        <div class="bg-white w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center"><div><h3 id="worker-documents-title" class="font-bold text-lg text-brandDark">Documentación del trabajador</h3><p id="worker-documents-name" class="text-sm text-gray-500"></p></div><button type="button" onclick="closeWorkerDocumentsModal()" aria-label="Cerrar" class="font-bold">✕</button></div>
+            <div class="rounded-xl border border-dashed border-gray-300 p-4">
+                <label for="worker-document-input" class="block text-sm font-semibold text-brandDark">Añadir documento personal</label>
+                <p class="mt-1 text-xs text-gray-500">Selecciona un archivo de tu equipo para adjuntarlo a este trabajador.</p>
+                <input id="worker-document-input" type="file" class="mt-3 block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brandBlue file:px-4 file:py-2 file:font-medium file:text-white">
+                <p id="worker-document-error" class="mt-2 hidden text-sm text-red-600" role="alert"></p>
+            </div>
+            <div><h4 class="text-sm font-bold text-brandDark">Documentos registrados</h4><ul id="worker-document-list" class="mt-2 divide-y divide-gray-100"></ul></div>
+        </div>
+    </div>
+
+    <!-- MODAL: TASK -->
+    <div id="task-modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="task-modal-title">
+        <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center"><h3 id="task-modal-title" class="font-bold text-lg text-brandDark">Añadir tarea a la agenda</h3><button type="button" onclick="closeTaskModal()" aria-label="Cerrar" class="font-bold">✕</button></div>
+            <form id="task-form" class="space-y-3">
+                <div><label for="task-date" class="block text-xs font-semibold text-gray-600 mb-1">Fecha</label><input type="date" id="task-date" class="w-full px-4 py-2 border rounded-xl text-sm" required></div>
+                <div><label for="task-title" class="block text-xs font-semibold text-gray-600 mb-1">Tarea</label><input type="text" id="task-title" maxlength="160" placeholder="Describe la tarea" class="w-full px-4 py-2 border rounded-xl text-sm" required></div>
+                <div><label for="task-details" class="block text-xs font-semibold text-gray-600 mb-1">Detalles (opcional)</label><textarea id="task-details" rows="2" maxlength="300" class="w-full px-4 py-2 border rounded-xl text-sm"></textarea></div>
+                <p id="task-form-error" class="hidden text-sm text-red-600" role="alert"></p>
+                <div class="flex space-x-3 pt-2"><button type="button" onclick="closeTaskModal()" class="flex-1 bg-gray-100 text-gray-600 py-2 rounded-xl text-sm">Cancelar</button><button type="submit" class="flex-1 custom-gradient text-white py-2 rounded-xl text-sm font-medium">Guardar tarea</button></div>
+            </form>
+        </div>
+    </div>
+
     <script>
-        let inventoryCount = 142;
+        let nextWorkerId = 5;
+        let nextLocationId = 4;
+        let nextInventoryId = 5;
+        let nextClientId = 3;
+        let nextFolderId = 6;
+        let nextDocumentId = 4;
+        let nextTaskId = 1;
+        let selectedWorkerId = null;
+        let editingWorkerId = null;
+        let editingInventoryItemId = null;
+        let editingInventoryLocationId = null;
+        let currentCalendarDate = new Date();
+        let selectedDate = toDateKey(new Date());
+        const departments = ['Operaciones', 'Administración', 'Atención al Cliente'];
+        const workers = [
+            { id: 1, name: 'Ana Martínez', role: 'Coordinadora de operaciones', contact: 'ana.martinez@grupoada.com', department: 'Operaciones', locations: [{ id: 1, address: 'Comunidad El Bosque, zona norte' }], documents: [] },
+            { id: 2, name: 'Luis Herrera', role: 'Técnico de campo', contact: '+1 555 0102', department: 'Operaciones', locations: [], documents: [] },
+            { id: 3, name: 'María López', role: 'Analista administrativa', contact: 'maria.lopez@grupoada.com', department: 'Administración', locations: [{ id: 2, address: 'Oficina Central, avenida Principal 125' }], documents: [] },
+            { id: 4, name: 'Carlos Díaz', role: 'Asesor de servicio', contact: '+1 555 0104', department: 'Atención al Cliente', locations: [], documents: [] }
+        ];
+        const inventoryLocations = [
+            { id: 1, name: 'Almacén Central' },
+            { id: 2, name: 'Depósito Norte' },
+            { id: 3, name: 'Depósito Sur' }
+        ];
+        const inventoryItems = [
+            { id: 1, name: 'EPP-001 (Cascos)', category: 'Equipamiento', quantity: 45, locationId: 1 },
+            { id: 2, name: 'EPP-002 (Guantes)', category: 'Equipamiento', quantity: 60, locationId: 1 },
+            { id: 3, name: 'HER-015 (Taladros)', category: 'Herramientas', quantity: 25, locationId: 2 },
+            { id: 4, name: 'SEG-003 (Botiquines)', category: 'Seguridad', quantity: 12, locationId: 3 }
+        ];
+        const clients = [
+            { id: 1, name: 'Constructora Horizonte', contact: 'contacto@horizonte.example', address: 'Av. Central 450, Distrito Norte' },
+            { id: 2, name: 'Comunidad El Bosque', contact: '+1 555 0202', address: 'Calle Principal, zona norte' }
+        ];
+        const archiveFolders = [
+            { id: 1, name: 'General' },
+            { id: 2, name: 'Recursos Humanos' },
+            { id: 3, name: 'Operaciones' },
+            { id: 5, name: 'control mensual de gastos e ingresos' }
+        ];
+        const documents = [
+            { id: 1, name: 'Manual corporativo.pdf', folderId: 1 },
+            { id: 2, name: 'Política de vacaciones.pdf', folderId: 2 },
+            { id: 3, name: 'Protocolo de seguridad.pdf', folderId: 3 }
+        ];
+        const tasks = [];
+        const monthNames = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('bg-brandBlue', 'text-white', 'shadow-md'));
             document.getElementById('tab-' + tabId).classList.remove('hidden');
             document.getElementById('nav-' + tabId).classList.add('bg-brandBlue', 'text-white', 'shadow-md');
+            const navLabel = document.getElementById('nav-' + tabId).textContent.trim();
+            document.getElementById('header-title').textContent = navLabel.replace(/^[^\p{L}\p{N}]+/u, '');
+            if (tabId === 'structure') renderOrganization();
+            if (tabId === 'dashboard') renderDashboard();
+            if (tabId === 'inventory') renderInventory();
+            if (tabId === 'archive') renderArchive();
+            if (tabId === 'tasks') renderCalendar();
+            if (tabId === 'workers') loadManagedWorkers();
+            if (tabId === 'security') loadAdminSecurityEvents();
+            if (tabId === 'signing') loadSigningDocuments();
         }
 
-        function openInventoryModal() { document.getElementById('inventory-modal').classList.remove('hidden'); }
-        function closeInventoryModal() { document.getElementById('inventory-modal').classList.add('hidden'); }
-
-        function handleInventorySubmit(e) {
-            e.preventDefault();
-            const name = document.getElementById('inv-name').value;
-            const cat = document.getElementById('inv-cat').value;
-            const qty = document.getElementById('inv-qty').value;
-            const loc = document.getElementById('inv-loc').value;
-
-            const tbody = document.getElementById('inventory-table-body');
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td class="p-4 font-semibold text-brandDark">${name}</td>
-                <td class="p-4 text-gray-600">${cat}</td>
-                <td class="p-4 text-gray-600 font-semibold">${qty}</td>
-                <td class="p-4 text-gray-600">${loc}</td>
-                <td class="p-4 text-right">
-                    <button onclick="deleteInventoryItem(this)" class="text-red-500 font-bold">🗑️</button>
-                </td>
-            `;
-            tbody.appendChild(row);
-            inventoryCount++;
-            document.getElementById('stat-inventory').innerText = inventoryCount;
-            closeInventoryModal();
-            e.target.reset();
+        function showModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
         }
 
-        function deleteInventoryItem(btn) {
-            if(confirm('¿Eliminar este artículo?')) {
-                btn.closest('tr').remove();
-                inventoryCount = Math.max(0, inventoryCount - 1);
-                document.getElementById('stat-inventory').innerText = inventoryCount;
+        function hideModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function showFormError(formId, message) {
+            const error = document.getElementById(formId);
+            error.textContent = message;
+            error.classList.remove('hidden');
+        }
+
+        function clearFormError(formId) {
+            const error = document.getElementById(formId);
+            error.textContent = '';
+            error.classList.add('hidden');
+        }
+
+        function openWorkerModal(workerId = null) {
+            editingWorkerId = workerId;
+            const worker = workers.find(item => item.id === workerId);
+            document.getElementById('worker-modal-title').textContent = worker ? 'Editar trabajador' : 'Añadir trabajador';
+            document.querySelector('#worker-form button[type="submit"]').textContent = worker ? 'Guardar cambios' : 'Guardar trabajador';
+            renderDepartmentOptions(worker ? worker.department : '');
+            if (worker) {
+                document.getElementById('worker-name').value = worker.name;
+                document.getElementById('worker-role').value = worker.role;
+                document.getElementById('worker-contact').value = worker.contact;
             }
+            clearFormError('worker-form-error');
+            showModal('worker-modal');
+            document.getElementById('worker-name').focus();
+        }
+
+        function closeWorkerModal() {
+            hideModal('worker-modal');
+            document.getElementById('worker-form').reset();
+            clearFormError('worker-form-error');
+            editingWorkerId = null;
+        }
+
+        function openWorkerDocumentsModal(workerId) {
+            const worker = workers.find(item => item.id === workerId);
+            if (!worker) return;
+            selectedWorkerId = workerId;
+            document.getElementById('worker-documents-name').textContent = `${worker.name} · ${worker.role}`;
+            document.getElementById('worker-document-input').value = '';
+            clearFormError('worker-document-error');
+            renderWorkerDocuments(worker);
+            showModal('worker-documents-modal');
+        }
+
+        function closeWorkerDocumentsModal() {
+            hideModal('worker-documents-modal');
+            document.getElementById('worker-document-input').value = '';
+            clearFormError('worker-document-error');
+            selectedWorkerId = null;
+        }
+
+        function renderWorkerDocuments(worker) {
+            const list = document.getElementById('worker-document-list');
+            list.replaceChildren();
+            if (worker.documents.length === 0) {
+                const empty = document.createElement('li');
+                empty.className = 'py-4 text-sm text-gray-500';
+                empty.textContent = 'Todavía no hay documentos asociados a este trabajador.';
+                list.appendChild(empty);
+                return;
+            }
+            worker.documents.forEach(file => {
+                const item = document.createElement('li');
+                item.className = 'flex items-center justify-between gap-3 py-3';
+                const link = document.createElement('a');
+                link.className = 'min-w-0 flex-1 truncate text-sm font-medium text-brandBlue hover:underline';
+                link.href = file.url;
+                link.target = '_blank';
+                link.rel = 'noopener';
+                link.textContent = file.name;
+                link.title = `${file.name} (${formatFileSize(file.size)})`;
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.className = 'shrink-0 text-xs font-semibold text-red-500 hover:underline';
+                remove.textContent = 'Quitar';
+                remove.setAttribute('aria-label', `Quitar documento ${file.name}`);
+                remove.addEventListener('click', () => {
+                    worker.documents = worker.documents.filter(item => item.id !== file.id);
+                    URL.revokeObjectURL(file.url);
+                    renderWorkerDocuments(worker);
+                });
+                item.append(link, remove);
+                list.appendChild(item);
+            });
+        }
+
+        function formatFileSize(size) {
+            if (size < 1024) return `${size} B`;
+            if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+            return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+        }
+
+        function openDepartmentModal() {
+            clearFormError('department-form-error');
+            showModal('department-modal');
+            document.getElementById('department-name').focus();
+        }
+
+        function closeDepartmentModal() {
+            hideModal('department-modal');
+            document.getElementById('department-form').reset();
+            clearFormError('department-form-error');
+        }
+
+        function openLocationModal(workerId) {
+            const worker = workers.find(item => item.id === workerId);
+            if (!worker) return;
+            selectedWorkerId = workerId;
+            document.getElementById('location-worker-name').textContent = worker.name;
+            clearFormError('location-form-error');
+            showModal('location-modal');
+            document.getElementById('location-address').focus();
+        }
+
+        function closeLocationModal() {
+            hideModal('location-modal');
+            document.getElementById('location-form').reset();
+            clearFormError('location-form-error');
+            selectedWorkerId = null;
+        }
+
+        function renderDepartmentOptions(selectedDepartment = '') {
+            const select = document.getElementById('worker-department');
+            select.replaceChildren();
+            const placeholder = document.createElement('option');
+            placeholder.value = '';
+            placeholder.textContent = 'Selecciona un departamento';
+            placeholder.disabled = true;
+            placeholder.selected = !selectedDepartment;
+            select.appendChild(placeholder);
+            departments.forEach(department => {
+                const option = document.createElement('option');
+                option.value = department;
+                option.textContent = department;
+                option.selected = department === selectedDepartment;
+                select.appendChild(option);
+            });
+        }
+
+        function renderOrganization() {
+            const container = document.getElementById('department-list');
+            container.replaceChildren();
+            departments.forEach(department => {
+                const departmentWorkers = workers.filter(worker => worker.department === department);
+                const section = document.createElement('section');
+                section.className = 'rounded-2xl border border-gray-200 bg-brandLight/50 p-5';
+
+                const heading = document.createElement('div');
+                heading.className = 'flex items-center justify-between gap-3 border-b border-gray-200 pb-3';
+                const title = document.createElement('h5');
+                title.className = 'font-bold text-brandDark';
+                title.textContent = department;
+                const count = document.createElement('span');
+                count.className = 'rounded-full bg-brandBlue/10 px-3 py-1 text-xs font-semibold text-brandBlue';
+                count.textContent = `${departmentWorkers.length} ${departmentWorkers.length === 1 ? 'trabajador' : 'trabajadores'}`;
+                heading.append(title, count);
+
+                const team = document.createElement('div');
+                team.className = 'mt-3 space-y-3';
+                if (departmentWorkers.length === 0) {
+                    const empty = document.createElement('p');
+                    empty.className = 'py-3 text-sm text-gray-500';
+                    empty.textContent = 'Aún no hay trabajadores en este departamento.';
+                    team.appendChild(empty);
+                }
+                departmentWorkers.forEach(worker => team.appendChild(createWorkerCard(worker)));
+                section.append(heading, team);
+                container.appendChild(section);
+            });
+            document.getElementById('stat-workers').textContent = String(workers.length);
+        }
+
+        function createWorkerCard(worker) {
+            const card = document.createElement('article');
+            card.className = 'rounded-xl border border-gray-100 bg-white p-4 shadow-sm';
+
+            const identity = document.createElement('div');
+            identity.className = 'flex items-start gap-3';
+            const avatar = document.createElement('div');
+            avatar.className = 'flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brandTeal/10 font-bold text-brandTeal';
+            avatar.textContent = worker.name.trim().split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase();
+            const details = document.createElement('div');
+            details.className = 'min-w-0 flex-1';
+            const name = document.createElement('h6');
+            name.className = 'font-semibold text-brandDark';
+            name.textContent = worker.name;
+            const role = document.createElement('p');
+            role.className = 'text-sm text-gray-500';
+            role.textContent = worker.role;
+            const contact = document.createElement('p');
+            contact.className = 'text-xs text-gray-500 mt-1';
+            contact.textContent = worker.contact;
+            details.append(name, role, contact);
+            identity.append(avatar, details);
+            const edit = document.createElement('button');
+            edit.type = 'button';
+            edit.className = 'text-xs font-semibold text-brandBlue hover:underline';
+            edit.textContent = 'Editar';
+            edit.setAttribute('aria-label', `Editar trabajador ${worker.name}`);
+            edit.addEventListener('click', () => openWorkerModal(worker.id));
+            identity.appendChild(edit);
+            card.appendChild(identity);
+
+            const locationSection = document.createElement('div');
+            locationSection.className = 'mt-4 border-t border-gray-100 pt-3';
+            const locationHeading = document.createElement('div');
+            locationHeading.className = 'flex items-center justify-between gap-2';
+            const label = document.createElement('p');
+            label.className = 'text-xs font-semibold uppercase tracking-wide text-gray-500';
+            label.textContent = 'Comunidades y zonas asignadas';
+            const addLocation = document.createElement('button');
+            addLocation.type = 'button';
+            addLocation.className = 'text-xs font-semibold text-brandBlue hover:underline';
+            addLocation.textContent = '+ Añadir';
+            addLocation.setAttribute('aria-label', `Asignar ubicación a ${worker.name}`);
+            addLocation.addEventListener('click', () => openLocationModal(worker.id));
+            locationHeading.append(label, addLocation);
+            locationSection.appendChild(locationHeading);
+
+            const locations = document.createElement('ul');
+            locations.className = 'mt-2 space-y-2';
+            if (worker.locations.length === 0) {
+                const emptyLocation = document.createElement('li');
+                emptyLocation.className = 'text-sm text-gray-400';
+                emptyLocation.textContent = 'Sin ubicaciones asignadas.';
+                locations.appendChild(emptyLocation);
+            }
+            worker.locations.forEach(location => {
+                const item = document.createElement('li');
+                item.className = 'flex items-start justify-between gap-2 text-sm text-gray-600';
+                const address = document.createElement('span');
+                address.className = 'flex-1';
+                address.textContent = `📍 ${location.address}`;
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.className = 'shrink-0 text-xs text-red-500 hover:underline';
+                remove.textContent = 'Quitar';
+                remove.setAttribute('aria-label', `Quitar ubicación de ${worker.name}`);
+                remove.addEventListener('click', () => {
+                    worker.locations = worker.locations.filter(item => item.id !== location.id);
+                    renderOrganization();
+                });
+                item.append(address, remove);
+                locations.appendChild(item);
+            });
+            locationSection.appendChild(locations);
+            card.appendChild(locationSection);
+            return card;
+        }
+
+        function renderDashboard() {
+            const workerTable = document.getElementById('dashboard-workers');
+            workerTable.replaceChildren();
+            workers.forEach(worker => {
+                const row = document.createElement('tr');
+                addCell(row, worker.name, 'p-4 font-semibold text-brandDark');
+                addCell(row, worker.role, 'p-4 text-gray-600');
+                addCell(row, worker.contact, 'p-4 text-gray-600');
+                const actions = document.createElement('td');
+                actions.className = 'p-4 text-right whitespace-nowrap';
+                const edit = document.createElement('button');
+                edit.type = 'button';
+                edit.className = 'mr-3 font-semibold text-brandBlue hover:underline';
+                edit.textContent = 'Editar';
+                edit.addEventListener('click', () => openWorkerModal(worker.id));
+                const documentation = document.createElement('button');
+                documentation.type = 'button';
+                documentation.className = 'font-semibold text-brandTeal hover:underline';
+                documentation.textContent = 'Documentación';
+                documentation.addEventListener('click', () => openWorkerDocumentsModal(worker.id));
+                actions.append(edit, documentation);
+                row.appendChild(actions);
+                workerTable.appendChild(row);
+            });
+
+            const inventoryTable = document.getElementById('dashboard-inventory');
+            inventoryTable.replaceChildren();
+            inventoryItems.forEach(item => {
+                const row = document.createElement('tr');
+                addCell(row, item.name, 'p-4 font-semibold text-brandDark');
+                addCell(row, item.category, 'p-4 text-gray-600');
+                addCell(row, `${item.quantity} unidades`, 'p-4 text-gray-600');
+                addCell(row, getLocationName(item.locationId), 'p-4 text-gray-600');
+                inventoryTable.appendChild(row);
+            });
+
+            const clientTable = document.getElementById('dashboard-clients');
+            clientTable.replaceChildren();
+            clients.forEach(client => {
+                const row = document.createElement('tr');
+                addCell(row, client.name, 'p-4 font-semibold text-brandDark');
+                addCell(row, client.contact, 'p-4 text-gray-600');
+                addCell(row, client.address, 'p-4 text-gray-600');
+                clientTable.appendChild(row);
+            });
+            document.getElementById('stat-workers').textContent = String(workers.length);
+            document.getElementById('stat-inventory').textContent = String(getInventoryTotal());
+            document.getElementById('stat-clients').textContent = String(clients.length);
+        }
+
+        function addCell(row, text, className) {
+            const cell = document.createElement('td');
+            cell.className = className;
+            cell.textContent = text;
+            row.appendChild(cell);
+        }
+
+        function getInventoryTotal() {
+            return inventoryItems.reduce((total, item) => total + item.quantity, 0);
+        }
+
+        function getLocationName(locationId) {
+            return inventoryLocations.find(location => location.id === locationId)?.name || 'Ubicación desconocida';
+        }
+
+        function renderInventory() {
+            const container = document.getElementById('inventory-locations');
+            container.replaceChildren();
+            inventoryLocations.forEach(location => {
+                const section = document.createElement('section');
+                section.className = 'bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden';
+                const heading = document.createElement('div');
+                heading.className = 'flex items-center justify-between gap-3 p-5 border-b border-gray-100';
+                const title = document.createElement('h4');
+                title.className = 'font-bold text-brandDark';
+                title.textContent = location.name;
+                const total = inventoryItems.filter(item => item.locationId === location.id).reduce((sum, item) => sum + item.quantity, 0);
+                const badge = document.createElement('span');
+                badge.className = 'rounded-full bg-brandTeal/10 px-3 py-1 text-xs font-semibold text-brandTeal';
+                badge.textContent = `${total} unidades`;
+                const editLocation = document.createElement('button');
+                editLocation.type = 'button';
+                editLocation.className = 'text-sm font-semibold text-brandBlue hover:underline';
+                editLocation.textContent = 'Editar ubicación';
+                editLocation.setAttribute('aria-label', `Editar ubicación ${location.name}`);
+                editLocation.addEventListener('click', () => openLocationCreateModal(location.id));
+                const headingActions = document.createElement('div');
+                headingActions.className = 'flex items-center gap-3';
+                headingActions.append(badge, editLocation);
+                heading.append(title, headingActions);
+
+                const tableWrap = document.createElement('div');
+                tableWrap.className = 'overflow-x-auto';
+                const table = document.createElement('table');
+                table.className = 'w-full min-w-[600px] text-left border-collapse';
+                const thead = document.createElement('thead');
+                thead.innerHTML = '<tr class="bg-gray-50 text-gray-600 text-xs font-semibold uppercase tracking-wider border-b"><th class="p-4">Artículo</th><th class="p-4">Categoría</th><th class="p-4">Cantidad</th><th class="p-4 text-right">Acciones</th></tr>';
+                const tbody = document.createElement('tbody');
+                tbody.className = 'divide-y divide-gray-100 text-sm';
+                const locationItems = inventoryItems.filter(item => item.locationId === location.id);
+                if (locationItems.length === 0) {
+                    const row = document.createElement('tr');
+                    const empty = document.createElement('td');
+                    empty.colSpan = 4;
+                    empty.className = 'p-4 text-sm text-gray-500';
+                    empty.textContent = 'No hay artículos registrados en esta ubicación.';
+                    row.appendChild(empty);
+                    tbody.appendChild(row);
+                }
+                locationItems.forEach(item => {
+                    const row = document.createElement('tr');
+                    addCell(row, item.name, 'p-4 font-semibold text-brandDark');
+                    addCell(row, item.category, 'p-4 text-gray-600');
+                    addCell(row, `${item.quantity} unidades`, 'p-4 text-gray-600');
+                    const actions = document.createElement('td');
+                    actions.className = 'p-4 text-right';
+                    const edit = document.createElement('button');
+                    edit.type = 'button';
+                    edit.className = 'mr-3 font-semibold text-brandBlue hover:underline';
+                    edit.textContent = 'Editar';
+                    edit.setAttribute('aria-label', `Editar artículo ${item.name}`);
+                    edit.addEventListener('click', () => openInventoryModal(item.id));
+                    const remove = document.createElement('button');
+                    remove.type = 'button';
+                    remove.className = 'font-semibold text-red-500 hover:underline';
+                    remove.textContent = 'Eliminar';
+                    remove.setAttribute('aria-label', `Eliminar ${item.name}`);
+                    remove.addEventListener('click', () => deleteInventoryItem(item.id));
+                    actions.append(edit, remove);
+                    row.appendChild(actions);
+                    tbody.appendChild(row);
+                });
+                table.append(thead, tbody);
+                tableWrap.appendChild(table);
+                section.append(heading, tableWrap);
+                container.appendChild(section);
+            });
+            renderDashboard();
+        }
+
+        function openInventoryModal(itemId = null) {
+            editingInventoryItemId = itemId;
+            const item = inventoryItems.find(entry => entry.id === itemId);
+            const select = document.getElementById('inv-location');
+            select.replaceChildren();
+            inventoryLocations.forEach(location => {
+                const option = document.createElement('option');
+                option.value = String(location.id);
+                option.textContent = location.name;
+                option.selected = item ? item.locationId === location.id : false;
+                select.appendChild(option);
+            });
+            document.getElementById('inventory-modal-title').textContent = item ? 'Editar artículo' : 'Añadir artículo al inventario';
+            document.querySelector('#inventory-form button[type="submit"]').textContent = item ? 'Guardar cambios' : 'Guardar';
+            if (item) {
+                document.getElementById('inv-name').value = item.name;
+                document.getElementById('inv-cat').value = item.category;
+                document.getElementById('inv-qty').value = String(item.quantity);
+            }
+            clearFormError('inventory-form-error');
+            showModal('inventory-modal');
+            document.getElementById('inv-name').focus();
+        }
+
+        function closeInventoryModal() {
+            hideModal('inventory-modal');
+            document.getElementById('inventory-form').reset();
+            clearFormError('inventory-form-error');
+            editingInventoryItemId = null;
+        }
+
+        function deleteInventoryItem(itemId) {
+            if (!window.confirm('¿Eliminar este artículo?')) return;
+            const itemIndex = inventoryItems.findIndex(item => item.id === itemId);
+            if (itemIndex < 0) return;
+            inventoryItems.splice(itemIndex, 1);
+            renderInventory();
+        }
+
+        function openLocationCreateModal(locationId = null) {
+            editingInventoryLocationId = locationId;
+            const location = inventoryLocations.find(item => item.id === locationId);
+            document.getElementById('location-create-title').textContent = location ? 'Editar ubicación' : 'Crear ubicación';
+            document.querySelector('#location-create-form button[type="submit"]').textContent = location ? 'Guardar cambios' : 'Crear ubicación';
+            if (location) document.getElementById('location-create-name').value = location.name;
+            clearFormError('location-create-error');
+            showModal('location-create-modal');
+            document.getElementById('location-create-name').focus();
+        }
+
+        function closeLocationCreateModal() {
+            hideModal('location-create-modal');
+            document.getElementById('location-create-form').reset();
+            clearFormError('location-create-error');
+            editingInventoryLocationId = null;
+        }
+
+        function openClientModal() {
+            clearFormError('client-form-error');
+            showModal('client-modal');
+            document.getElementById('client-name').focus();
+        }
+
+        function closeClientModal() {
+            hideModal('client-modal');
+            document.getElementById('client-form').reset();
+            clearFormError('client-form-error');
+        }
+
+        function openFolderModal() {
+            clearFormError('folder-form-error');
+            showModal('folder-modal');
+            document.getElementById('folder-name').focus();
+        }
+
+        function closeFolderModal() {
+            hideModal('folder-modal');
+            document.getElementById('folder-form').reset();
+            clearFormError('folder-form-error');
+        }
+
+        function openDocumentModal() {
+            const select = document.getElementById('document-folder');
+            select.replaceChildren();
+            archiveFolders.forEach(folder => {
+                const option = document.createElement('option');
+                option.value = String(folder.id);
+                option.textContent = folder.name;
+                select.appendChild(option);
+            });
+            clearFormError('document-form-error');
+            showModal('document-modal');
+            document.getElementById('document-name').focus();
+        }
+
+        function closeDocumentModal() {
+            hideModal('document-modal');
+            document.getElementById('document-form').reset();
+            clearFormError('document-form-error');
+        }
+
+        function renderArchive() {
+            const container = document.getElementById('archive-folders');
+            container.replaceChildren();
+            const uploadFolder = document.getElementById('archive-upload-folder');
+            const selectedFolderId = uploadFolder.value;
+            uploadFolder.replaceChildren();
+            archiveFolders.forEach(folder => {
+                const option = document.createElement('option');
+                option.value = String(folder.id);
+                option.textContent = `Cargar en: ${folder.name}`;
+                option.selected = String(folder.id) === selectedFolderId;
+                uploadFolder.appendChild(option);
+            });
+            archiveFolders.forEach(folder => {
+                const section = document.createElement('section');
+                section.className = 'archive-folder bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden';
+                const heading = document.createElement('div');
+                heading.className = 'flex items-center justify-between gap-3 p-5 border-b border-gray-100';
+                const title = document.createElement('h4');
+                title.className = 'font-bold text-brandDark';
+                title.textContent = `📁 ${folder.name}`;
+                const count = documents.filter(document => document.folderId === folder.id).length;
+                const badge = document.createElement('span');
+                badge.className = 'text-xs text-gray-500';
+                badge.textContent = `${count} ${count === 1 ? 'documento' : 'documentos'}`;
+                heading.append(title, badge);
+
+                const list = document.createElement('div');
+                list.className = 'divide-y divide-gray-100';
+                const folderDocuments = documents.filter(document => document.folderId === folder.id);
+                if (folderDocuments.length === 0) {
+                    const empty = document.createElement('p');
+                    empty.className = 'p-5 text-sm text-gray-500';
+                    empty.textContent = 'Esta carpeta todavía no contiene documentos.';
+                    list.appendChild(empty);
+                }
+                folderDocuments.forEach(archiveDocument => {
+                    const row = document.createElement('div');
+                    row.className = 'document-row flex flex-wrap items-center gap-3 p-4 hover:bg-gray-50';
+                    row.dataset.documentId = String(archiveDocument.id);
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.className = 'print-selector h-4 w-4 accent-brandBlue';
+                    checkbox.setAttribute('aria-label', `Seleccionar ${archiveDocument.name} para imprimir`);
+                    checkbox.addEventListener('change', () => {
+                        row.classList.toggle('print-selected', checkbox.checked);
+                    });
+                    const name = document.createElement('span');
+                    name.className = 'text-sm font-medium text-brandDark';
+                    name.textContent = `📄 ${archiveDocument.name}`;
+                    row.append(checkbox, name);
+                    if (archiveDocument.url) {
+                        const link = document.createElement('a');
+                        link.className = 'no-print ml-auto text-xs font-semibold text-brandBlue hover:underline';
+                        link.href = archiveDocument.url;
+                        link.target = '_blank';
+                        link.rel = 'noopener';
+                        link.textContent = 'Abrir';
+                        link.addEventListener('click', event => event.stopPropagation());
+                        row.appendChild(link);
+
+                        const mimeType = archiveDocument.type || '';
+                        let preview;
+                        if (mimeType.startsWith('image/')) {
+                            preview = document.createElement('img');
+                            preview.className = 'print-file-preview print-file-image';
+                            preview.src = archiveDocument.url;
+                            preview.alt = archiveDocument.name;
+                        } else {
+                            preview = document.createElement('iframe');
+                            preview.className = 'print-file-preview';
+                            preview.src = archiveDocument.url;
+                            preview.title = archiveDocument.name;
+                            preview.setAttribute('sandbox', '');
+                        }
+                        row.appendChild(preview);
+                        if (!archiveDocument.managedByServer) {
+                            const remove = document.createElement('button');
+                            remove.type = 'button';
+                            remove.className = 'no-print text-xs font-semibold text-red-500 hover:underline';
+                            remove.textContent = 'Quitar';
+                            remove.setAttribute('aria-label', `Quitar documento ${archiveDocument.name}`);
+                            remove.addEventListener('click', () => deleteArchiveDocument(archiveDocument.id));
+                            row.appendChild(remove);
+                        }
+                    }
+                    list.appendChild(row);
+                });
+                section.append(heading, list);
+                container.appendChild(section);
+            });
+        }
+
+        function printSelectedDocuments() {
+            const selected = document.querySelectorAll('#archive-folders .print-selector:checked');
+            if (selected.length === 0) {
+                window.alert('Selecciona al menos un documento para imprimir.');
+                return;
+            }
+            document.querySelectorAll('#archive-folders .archive-folder').forEach(folder => {
+                folder.classList.toggle('print-folder-selected', Boolean(folder.querySelector('.document-row.print-selected')));
+            });
+            document.body.classList.add('printing-selected');
+            window.print();
+        }
+
+        window.addEventListener('afterprint', () => document.body.classList.remove('printing-selected'));
+
+        function deleteArchiveDocument(documentId) {
+            const index = documents.findIndex(item => item.id === documentId);
+            if (index < 0) return;
+            const [removed] = documents.splice(index, 1);
+            if (removed.url) URL.revokeObjectURL(removed.url);
+            renderArchive();
+        }
+
+        function addLocalArchiveFile(file) {
+            if (!file) return;
+            const folderId = Number(document.getElementById('archive-upload-folder').value);
+            if (!archiveFolders.some(folder => folder.id === folderId)) {
+                window.alert('Crea o selecciona una carpeta válida para guardar el archivo.');
+                return;
+            }
+            if (documents.some(document => document.folderId === folderId && document.name.toLocaleLowerCase() === file.name.toLocaleLowerCase())) {
+                window.alert('Ya existe un documento con ese nombre en la carpeta seleccionada.');
+                return;
+            }
+            documents.push({
+                id: nextDocumentId++,
+                name: file.name,
+                folderId,
+                type: file.type,
+                size: file.size,
+                url: URL.createObjectURL(file)
+            });
+            renderArchive();
+        }
+
+        function toDateKey(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function renderCalendar() {
+            const year = currentCalendarDate.getFullYear();
+            const month = currentCalendarDate.getMonth();
+            document.getElementById('calendar-month-label').textContent = `${monthNames[month]} ${year}`;
+            const grid = document.getElementById('calendar-grid');
+            grid.replaceChildren();
+            ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].forEach(day => {
+                const heading = document.createElement('div');
+                heading.className = 'py-2 text-center text-xs font-semibold uppercase tracking-wide text-gray-500';
+                heading.textContent = day;
+                grid.appendChild(heading);
+            });
+            const firstDayOffset = (new Date(year, month, 1).getDay() + 6) % 7;
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const numberOfWeeks = Math.ceil((firstDayOffset + daysInMonth) / 7);
+            const todayKey = toDateKey(new Date());
+            for (let cellIndex = 0; cellIndex < numberOfWeeks * 7; cellIndex++) {
+                const dayNumber = cellIndex - firstDayOffset + 1;
+                if (dayNumber < 1 || dayNumber > daysInMonth) {
+                    const blank = document.createElement('div');
+                    blank.className = 'min-h-16 sm:min-h-24';
+                    grid.appendChild(blank);
+                    continue;
+                }
+                const date = new Date(year, month, dayNumber);
+                const dateKey = toDateKey(date);
+                const dayTasks = tasks.filter(task => task.date === dateKey);
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'flex min-h-16 flex-col items-center justify-start gap-1 rounded-xl border p-2 text-sm transition hover:border-brandBlue hover:bg-blue-50 sm:min-h-24 sm:items-start sm:p-3';
+                if (dateKey === selectedDate) button.classList.add('border-brandBlue', 'bg-blue-50');
+                else button.classList.add('border-gray-100', 'bg-white');
+                if (dateKey === todayKey) button.classList.add('font-bold', 'text-brandTeal');
+                button.setAttribute('aria-label', `${date.toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' })}${dayTasks.length ? `, ${dayTasks.length} tareas` : ''}`);
+                const number = document.createElement('span');
+                number.textContent = String(dayNumber);
+                button.appendChild(number);
+                if (dayTasks.length) {
+                    const badge = document.createElement('span');
+                    badge.className = 'rounded-full bg-brandTeal/10 px-2 py-0.5 text-[10px] font-semibold text-brandTeal';
+                    badge.textContent = `${dayTasks.length} ${dayTasks.length === 1 ? 'tarea' : 'tareas'}`;
+                    button.appendChild(badge);
+                }
+                button.addEventListener('click', () => {
+                    selectedDate = dateKey;
+                    renderCalendar();
+                    renderSelectedDayTasks();
+                    openTaskModal(dateKey);
+                });
+                grid.appendChild(button);
+            }
+            renderSelectedDayTasks();
+        }
+
+        function renderSelectedDayTasks() {
+            const date = new Date(`${selectedDate}T12:00:00`);
+            document.getElementById('selected-date-label').textContent = date.toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+            const list = document.getElementById('selected-day-tasks');
+            list.replaceChildren();
+            const dateTasks = tasks.filter(task => task.date === selectedDate);
+            if (dateTasks.length === 0) {
+                const empty = document.createElement('li');
+                empty.className = 'text-sm text-gray-500';
+                empty.textContent = 'No hay tareas programadas para esta fecha.';
+                list.appendChild(empty);
+                return;
+            }
+            dateTasks.forEach(task => {
+                const item = document.createElement('li');
+                item.className = 'flex items-start justify-between gap-3 rounded-xl border border-gray-100 bg-brandLight/50 p-4';
+                const content = document.createElement('div');
+                const title = document.createElement('p');
+                title.className = 'font-semibold text-brandDark';
+                title.textContent = task.title;
+                content.appendChild(title);
+                if (task.details) {
+                    const details = document.createElement('p');
+                    details.className = 'mt-1 text-sm text-gray-500';
+                    details.textContent = task.details;
+                    content.appendChild(details);
+                }
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.className = 'shrink-0 text-xs font-semibold text-red-500 hover:underline';
+                remove.textContent = 'Eliminar';
+                remove.setAttribute('aria-label', `Eliminar tarea ${task.title}`);
+                remove.addEventListener('click', () => {
+                    const taskIndex = tasks.findIndex(item => item.id === task.id);
+                    if (taskIndex >= 0) tasks.splice(taskIndex, 1);
+                    renderCalendar();
+                });
+                item.append(content, remove);
+                list.appendChild(item);
+            });
+        }
+
+        function openTaskModal(dateKey) {
+            clearFormError('task-form-error');
+            document.getElementById('task-date').value = dateKey;
+            showModal('task-modal');
+            document.getElementById('task-title').focus();
+        }
+
+        function closeTaskModal() {
+            hideModal('task-modal');
+            document.getElementById('task-form').reset();
+            clearFormError('task-form-error');
+        }
+
+        document.getElementById('calendar-prev').addEventListener('click', () => {
+            currentCalendarDate = new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth() - 1, 1);
+            renderCalendar();
+        });
+        document.getElementById('calendar-next').addEventListener('click', () => {
+            currentCalendarDate = new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth() + 1, 1);
+            renderCalendar();
+        });
+
+        document.getElementById('worker-form').addEventListener('submit', event => {
+            event.preventDefault();
+            const name = document.getElementById('worker-name').value.trim();
+            const role = document.getElementById('worker-role').value.trim();
+            const contact = document.getElementById('worker-contact').value.trim();
+            const department = document.getElementById('worker-department').value;
+            if (!name || !role || !contact || !departments.includes(department)) {
+                showFormError('worker-form-error', 'Completa todos los campos y selecciona un departamento válido.');
+                return;
+            }
+            const existingWorker = workers.find(item => item.id === editingWorkerId);
+            if (existingWorker) Object.assign(existingWorker, { name, role, contact, department });
+            else workers.push({ id: nextWorkerId++, name, role, contact, department, locations: [], documents: [] });
+            closeWorkerModal();
+            renderOrganization();
+            renderDashboard();
+        });
+
+        document.getElementById('department-form').addEventListener('submit', event => {
+            event.preventDefault();
+            const name = document.getElementById('department-name').value.trim();
+            if (!name) {
+                showFormError('department-form-error', 'Ingresa el nombre del departamento.');
+                return;
+            }
+            if (departments.some(department => department.toLocaleLowerCase() === name.toLocaleLowerCase())) {
+                showFormError('department-form-error', 'Ya existe un departamento con ese nombre.');
+                return;
+            }
+            departments.push(name);
+            closeDepartmentModal();
+            renderOrganization();
+            renderDepartmentOptions();
+        });
+
+        document.getElementById('location-form').addEventListener('submit', event => {
+            event.preventDefault();
+            const address = document.getElementById('location-address').value.trim();
+            const worker = workers.find(item => item.id === selectedWorkerId);
+            if (!address || !worker) {
+                showFormError('location-form-error', 'Ingresa una dirección y verifica el trabajador seleccionado.');
+                return;
+            }
+            worker.locations.push({ id: nextLocationId++, address });
+            closeLocationModal();
+            renderOrganization();
+        });
+
+        document.getElementById('inventory-form').addEventListener('submit', event => {
+            event.preventDefault();
+            const name = document.getElementById('inv-name').value.trim();
+            const category = document.getElementById('inv-cat').value.trim();
+            const quantity = Number(document.getElementById('inv-qty').value);
+            const locationId = Number(document.getElementById('inv-location').value);
+            if (!name || !category || !Number.isSafeInteger(quantity) || quantity < 1 || !inventoryLocations.some(location => location.id === locationId)) {
+                showFormError('inventory-form-error', 'Completa los campos y selecciona una ubicación válida y una cantidad entera mayor que cero.');
+                return;
+            }
+            const existingItem = inventoryItems.find(item => item.id === editingInventoryItemId);
+            if (existingItem) Object.assign(existingItem, { name, category, quantity, locationId });
+            else inventoryItems.push({ id: nextInventoryId++, name, category, quantity, locationId });
+            closeInventoryModal();
+            renderInventory();
+        });
+
+        document.getElementById('location-create-form').addEventListener('submit', event => {
+            event.preventDefault();
+            const name = document.getElementById('location-create-name').value.trim();
+            if (!name) {
+                showFormError('location-create-error', 'Ingresa el nombre de la ubicación.');
+                return;
+            }
+            const existingLocation = inventoryLocations.find(location => location.id === editingInventoryLocationId);
+            if (inventoryLocations.some(location => location.id !== editingInventoryLocationId && location.name.toLocaleLowerCase() === name.toLocaleLowerCase())) {
+                showFormError('location-create-error', 'Ya existe una ubicación con ese nombre.');
+                return;
+            }
+            if (existingLocation) existingLocation.name = name;
+            else inventoryLocations.push({ id: nextLocationId++, name });
+            closeLocationCreateModal();
+            renderInventory();
+        });
+
+        document.getElementById('client-form').addEventListener('submit', event => {
+            event.preventDefault();
+            const name = document.getElementById('client-name').value.trim();
+            const contact = document.getElementById('client-contact').value.trim();
+            const address = document.getElementById('client-address').value.trim();
+            if (!name || !contact || !address) {
+                showFormError('client-form-error', 'Completa el nombre, el contacto y la dirección física.');
+                return;
+            }
+            clients.push({ id: nextClientId++, name, contact, address });
+            closeClientModal();
+            renderDashboard();
+        });
+
+        document.getElementById('folder-form').addEventListener('submit', event => {
+            event.preventDefault();
+            const name = document.getElementById('folder-name').value.trim();
+            if (!name) {
+                showFormError('folder-form-error', 'Ingresa el nombre de la carpeta.');
+                return;
+            }
+            if (archiveFolders.some(folder => folder.name.toLocaleLowerCase() === name.toLocaleLowerCase())) {
+                showFormError('folder-form-error', 'Ya existe una carpeta con ese nombre.');
+                return;
+            }
+            archiveFolders.push({ id: nextFolderId++, name });
+            closeFolderModal();
+            renderArchive();
+        });
+
+        document.getElementById('document-form').addEventListener('submit', event => {
+            event.preventDefault();
+            const name = document.getElementById('document-name').value.trim();
+            const folderId = Number(document.getElementById('document-folder').value);
+            if (!name || !archiveFolders.some(folder => folder.id === folderId)) {
+                showFormError('document-form-error', 'Ingresa un nombre y selecciona una carpeta válida.');
+                return;
+            }
+            if (documents.some(document => document.folderId === folderId && document.name.toLocaleLowerCase() === name.toLocaleLowerCase())) {
+                showFormError('document-form-error', 'Ya existe un documento con ese nombre en la carpeta seleccionada.');
+                return;
+            }
+            documents.push({ id: nextDocumentId++, name, folderId });
+            closeDocumentModal();
+            renderArchive();
+        });
+
+        document.getElementById('archive-file-input').addEventListener('change', event => {
+            const [file] = event.target.files;
+            if (file) addLocalArchiveFile(file);
+            event.target.value = '';
+        });
+
+        document.getElementById('worker-document-input').addEventListener('change', event => {
+            const [file] = event.target.files;
+            const worker = workers.find(item => item.id === selectedWorkerId);
+            if (!file || !worker) return;
+            if (worker.documents.some(document => document.name.toLocaleLowerCase() === file.name.toLocaleLowerCase())) {
+                showFormError('worker-document-error', 'Ya existe un documento con ese nombre para este trabajador.');
+                event.target.value = '';
+                return;
+            }
+            worker.documents.push({
+                id: `${worker.id}-${Date.now()}-${worker.documents.length}`,
+                name: file.name,
+                size: file.size,
+                url: URL.createObjectURL(file)
+            });
+            event.target.value = '';
+            clearFormError('worker-document-error');
+            renderWorkerDocuments(worker);
+        });
+
+        document.getElementById('task-form').addEventListener('submit', event => {
+            event.preventDefault();
+            const date = document.getElementById('task-date').value;
+            const title = document.getElementById('task-title').value.trim();
+            const details = document.getElementById('task-details').value.trim();
+            if (!date || !title) {
+                showFormError('task-form-error', 'Selecciona una fecha e ingresa la descripción de la tarea.');
+                return;
+            }
+            const [year, month, day] = date.split('-').map(Number);
+            const validDate = new Date(year, month - 1, day);
+            if (toDateKey(validDate) !== date) {
+                showFormError('task-form-error', 'La fecha seleccionada no es válida.');
+                return;
+            }
+            tasks.push({ id: nextTaskId++, date, title, details });
+            selectedDate = date;
+            currentCalendarDate = new Date(year, month - 1, 1);
+            closeTaskModal();
+            renderCalendar();
+        });
+
+        document.querySelectorAll('[role="dialog"]').forEach(modal => {
+            modal.addEventListener('click', event => {
+                if (event.target !== modal) return;
+                if (modal.id === 'worker-modal') closeWorkerModal();
+                if (modal.id === 'department-modal') closeDepartmentModal();
+                if (modal.id === 'location-modal') closeLocationModal();
+                if (modal.id === 'inventory-modal') closeInventoryModal();
+                if (modal.id === 'location-create-modal') closeLocationCreateModal();
+                if (modal.id === 'client-modal') closeClientModal();
+                if (modal.id === 'folder-modal') closeFolderModal();
+                if (modal.id === 'document-modal') closeDocumentModal();
+                if (modal.id === 'worker-documents-modal') closeWorkerDocumentsModal();
+                if (modal.id === 'task-modal') closeTaskModal();
+            });
+        });
+
+        document.addEventListener('keydown', event => {
+            if (event.key !== 'Escape') return;
+            if (!document.getElementById('worker-modal').classList.contains('hidden')) closeWorkerModal();
+            if (!document.getElementById('department-modal').classList.contains('hidden')) closeDepartmentModal();
+            if (!document.getElementById('location-modal').classList.contains('hidden')) closeLocationModal();
+            if (!document.getElementById('inventory-modal').classList.contains('hidden')) closeInventoryModal();
+            if (!document.getElementById('location-create-modal').classList.contains('hidden')) closeLocationCreateModal();
+            if (!document.getElementById('client-modal').classList.contains('hidden')) closeClientModal();
+            if (!document.getElementById('folder-modal').classList.contains('hidden')) closeFolderModal();
+            if (!document.getElementById('document-modal').classList.contains('hidden')) closeDocumentModal();
+            if (!document.getElementById('worker-documents-modal').classList.contains('hidden')) closeWorkerDocumentsModal();
+            if (!document.getElementById('task-modal').classList.contains('hidden')) closeTaskModal();
+        });
+
+        renderOrganization();
+        renderDashboard();
+        renderInventory();
+        renderArchive();
+        renderCalendar();
+    </script>
+    <script>
+        const loginView = document.getElementById('login-view');
+        const adminApp = document.getElementById('admin-app');
+        const loginForm = document.getElementById('login-form');
+        const loginError = document.getElementById('login-error');
+        let attendanceMap = null;
+        let attendanceMarkers = new Map();
+        let attendanceRefreshTimer = null;
+        let editingAttendanceId = null;
+        let attendanceShifts = [];
+        let attendanceWorkers = [];
+        let signingDocuments = [];
+        let selectedSigningDocumentId = null;
+        let autoScriptPromise = null;
+        const attendanceMarkerStyles = {
+            limpieza: { color: '#334155', fillColor: '#ffffff' },
+            'conserjería': { color: '#1e3a8a', fillColor: '#2563eb' },
+            jardinería: { color: '#14532d', fillColor: '#16a34a' }
+        };
+        async function requestApi(path, options = {}) {
+            let response;
+            try {
+                response = await fetch(path, {
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', ...options.headers },
+                    ...options
+                });
+            } catch (error) {
+                if (error instanceof TypeError) {
+                    throw new Error('No se pudo conectar con el servidor de la aplicación. Inicia el backend y vuelve a intentarlo.');
+                }
+                throw error;
+            }
+
+            const responseText = await response.text();
+            const contentType = response.headers.get('content-type') || '';
+            let result = null;
+            if (responseText.trim() && contentType.includes('application/json')) {
+                try {
+                    result = JSON.parse(responseText);
+                } catch (error) {
+                    if (error instanceof SyntaxError) {
+                        throw new Error('La respuesta de la API no contiene JSON válido. Comprueba que el servidor de la aplicación está activo.');
+                    }
+                    throw error;
+                }
+            }
+            if (!response.ok) {
+                if (response.status === 401 && path !== '/api/login' && path !== '/api/session') {
+                    window.location.replace('/');
+                }
+                throw new Error(result?.error || `La API no está disponible (HTTP ${response.status}). Inicia el servidor de la aplicación e inténtalo de nuevo.`);
+            }
+            if (!contentType.includes('application/json') || !result || typeof result !== 'object') {
+                throw new Error('La API no está disponible o devolvió una respuesta incompatible. Inicia el servidor de la aplicación e inténtalo de nuevo.');
+            }
+            return result;
+        }
+
+        function openAttendanceEdit(shift) {
+            editingAttendanceId = shift.id;
+            document.getElementById('attendance-edit-worker').value = shift.worker || '';
+            document.getElementById('attendance-edit-date').value = shift.date || '';
+            document.getElementById('attendance-edit-start').value = shift.startedAt ? shift.startedAt.slice(11, 19) : '';
+            document.getElementById('attendance-edit-stop').value = shift.stoppedAt ? shift.stoppedAt.slice(11, 19) : '';
+            document.getElementById('attendance-edit-incident').value = shift.incident || '';
+            document.getElementById('attendance-edit-error').classList.add('hidden');
+            showModal('attendance-edit-modal');
+        }
+
+        function closeAttendanceEdit() {
+            hideModal('attendance-edit-modal');
+            document.getElementById('attendance-edit-form').reset();
+            document.getElementById('attendance-edit-error').classList.add('hidden');
+            editingAttendanceId = null;
+        }
+
+        async function saveAttendanceEdit(event) {
+            event.preventDefault();
+            if (editingAttendanceId === null) return;
+            const button = document.getElementById('attendance-edit-save');
+            const errorElement = document.getElementById('attendance-edit-error');
+            button.disabled = true;
+            errorElement.classList.add('hidden');
+            try {
+                await requestApi(`/api/admin/attendance-reports/${editingAttendanceId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        worker: document.getElementById('attendance-edit-worker').value,
+                        date: document.getElementById('attendance-edit-date').value,
+                        startTime: document.getElementById('attendance-edit-start').value,
+                        stopTime: document.getElementById('attendance-edit-stop').value,
+                        incident: document.getElementById('attendance-edit-incident').value
+                    })
+                });
+                closeAttendanceEdit();
+                await loadAttendanceReports();
+            } catch (error) {
+                errorElement.textContent = error.message;
+                errorElement.classList.remove('hidden');
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        function showMonthlyAttendanceStatus(message, isError = false) {
+            const status = document.getElementById('monthly-attendance-status');
+            status.textContent = message;
+            status.className = `mt-3 rounded-lg p-3 text-sm ${isError ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`;
+        }
+
+        function renderMonthlyAttendance() {
+            const searchInput = document.getElementById('monthly-attendance-search');
+            const monthInput = document.getElementById('monthly-attendance-month');
+            const workerList = document.getElementById('monthly-attendance-workers');
+            const table = document.getElementById('monthly-attendance-table');
+            const heading = document.getElementById('monthly-attendance-heading');
+            const printButton = document.getElementById('monthly-attendance-print');
+            const query = searchInput.value.trim().toLocaleLowerCase('es');
+            const selectedMonth = monthInput.value;
+
+            const workersWithShifts = [...new Set([
+                ...attendanceWorkers.map(worker => worker.name),
+                ...attendanceShifts.map(shift => shift.worker)
+            ].filter(Boolean))]
+                .sort((first, second) => first.localeCompare(second, 'es'));
+            workerList.replaceChildren();
+            workersWithShifts.forEach(worker => {
+                const option = document.createElement('option');
+                option.value = worker;
+                workerList.appendChild(option);
+            });
+            table.replaceChildren();
+            printButton.disabled = true;
+
+            if (!query) {
+                heading.textContent = 'Busca un trabajador y selecciona un mes para consultar sus fichajes.';
+                return;
+            }
+            if (!selectedMonth) {
+                heading.textContent = 'Selecciona un mes para consultar los fichajes del trabajador.';
+                return;
+            }
+            const exactWorker = workersWithShifts.find(worker => worker.toLocaleLowerCase('es') === query);
+            const matchingWorkers = exactWorker
+                ? [exactWorker]
+                : workersWithShifts.filter(worker => worker.toLocaleLowerCase('es').includes(query));
+            if (matchingWorkers.length !== 1) {
+                heading.textContent = matchingWorkers.length
+                    ? 'Hay varios resultados. Selecciona un nombre concreto de la lista.'
+                    : 'No se encontró ningún trabajador con ese nombre.';
+                return;
+            }
+
+            const selectedWorker = matchingWorkers[0];
+            const shifts = attendanceShifts
+                .filter(shift => shift.worker === selectedWorker && shift.date?.startsWith(`${selectedMonth}-`))
+                .sort((first, second) => second.startedAt.localeCompare(first.startedAt));
+            heading.textContent = `${selectedWorker} · ${selectedMonth} · ${shifts.length} ${shifts.length === 1 ? 'registro' : 'registros'}`;
+            if (!shifts.length) {
+                const empty = document.createElement('tr');
+                const cell = document.createElement('td');
+                cell.colSpan = 6;
+                cell.className = 'p-4 text-center text-gray-500';
+                cell.textContent = 'No hay fichajes de este trabajador en el mes seleccionado.';
+                empty.appendChild(cell);
+                table.appendChild(empty);
+                return;
+            }
+
+            shifts.forEach(shift => {
+                const row = document.createElement('tr');
+                row.className = 'align-top';
+                const fields = [
+                    { value: shift.worker || '', type: 'text', maxLength: 100, label: 'Trabajador' },
+                    { value: shift.date || '', type: 'date', label: 'Fecha' },
+                    { value: shift.startedAt ? shift.startedAt.slice(11, 19) : '', type: 'time', step: '1', label: 'Hora de entrada' },
+                    { value: shift.stoppedAt ? shift.stoppedAt.slice(11, 19) : '', type: 'time', step: '1', label: 'Hora de salida' }
+                ];
+                const controls = fields.map(field => {
+                    const cell = document.createElement('td');
+                    cell.className = 'p-2';
+                    const input = document.createElement('input');
+                    input.type = field.type;
+                    input.value = field.value;
+                    input.setAttribute('aria-label', field.label);
+                    if (field.maxLength) input.maxLength = field.maxLength;
+                    if (field.step) input.step = field.step;
+                    input.required = field.type !== 'time' || field.label === 'Hora de entrada';
+                    input.className = 'w-full min-w-28 rounded-lg border border-gray-300 px-2 py-2';
+                    cell.appendChild(input);
+                    row.appendChild(cell);
+                    return input;
+                });
+                const incidentCell = document.createElement('td');
+                incidentCell.className = 'p-2';
+                const incident = document.createElement('textarea');
+                incident.value = shift.incident || '';
+                incident.maxLength = 500;
+                incident.rows = 2;
+                incident.setAttribute('aria-label', 'Incidencia');
+                incident.className = 'w-full min-w-48 rounded-lg border border-gray-300 px-2 py-2';
+                incidentCell.appendChild(incident);
+                row.appendChild(incidentCell);
+
+                const actionCell = document.createElement('td');
+                actionCell.className = 'p-2 monthly-attendance-save';
+                const saveButton = document.createElement('button');
+                saveButton.type = 'button';
+                saveButton.className = 'rounded-lg bg-brandBlue px-3 py-2 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-50';
+                saveButton.textContent = 'Guardar';
+                saveButton.addEventListener('click', async () => {
+                    saveButton.disabled = true;
+                    try {
+                        await requestApi(`/api/admin/attendance-reports/${shift.id}`, {
+                            method: 'PUT',
+                            body: JSON.stringify({
+                                worker: controls[0].value,
+                                date: controls[1].value,
+                                startTime: controls[2].value,
+                                stopTime: controls[3].value,
+                                incident: incident.value
+                            })
+                        });
+                        const refreshed = await loadAttendanceReports();
+                        if (!refreshed) {
+                            showMonthlyAttendanceStatus('El cambio se guardó, pero no se pudo actualizar la tabla. Recarga la sección.', true);
+                            return;
+                        }
+                        showMonthlyAttendanceStatus('Los cambios del fichaje se han guardado.');
+                    } catch (error) {
+                        showMonthlyAttendanceStatus(error.message, true);
+                    } finally {
+                        saveButton.disabled = false;
+                    }
+                });
+                actionCell.appendChild(saveButton);
+                row.appendChild(actionCell);
+                table.appendChild(row);
+            });
+            printButton.disabled = false;
+        }
+
+        async function loadAttendanceReports() {
+            try {
+                const { reports, shifts, workers } = await requestApi('/api/admin/attendance-reports');
+                attendanceShifts = shifts || reports.flatMap(report => report.shifts || []);
+                attendanceWorkers = workers || [];
+                renderMonthlyAttendance();
+                return true;
+            } catch (error) {
+                showMonthlyAttendanceStatus(error.message, true);
+                return false;
+            }
+        }
+
+        const financeCurrency = new Intl.NumberFormat('es-ES', {
+            style: 'currency',
+            currency: 'EUR'
+        });
+
+        function addFinanceCommunity(name = '', amount = '0', removable = false) {
+            const row = document.createElement('div');
+            row.className = 'grid grid-cols-1 items-end gap-3 sm:grid-cols-[1fr_12rem_auto]';
+            const nameLabel = document.createElement('label');
+            nameLabel.className = 'text-sm text-gray-700';
+            nameLabel.textContent = 'Comunidad';
+            const nameInput = document.createElement('input');
+            nameInput.type = 'text';
+            nameInput.maxLength = 100;
+            nameInput.required = true;
+            nameInput.value = name;
+            nameInput.placeholder = 'Nombre de la comunidad';
+            nameInput.className = 'finance-community-name mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2';
+            nameLabel.appendChild(nameInput);
+
+            const amountLabel = document.createElement('label');
+            amountLabel.className = 'text-sm text-gray-700';
+            amountLabel.textContent = 'Importe (€)';
+            const amountInput = document.createElement('input');
+            amountInput.type = 'number';
+            amountInput.min = '0';
+            amountInput.step = '0.01';
+            amountInput.value = amount;
+            amountInput.className = 'finance-community-amount mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2';
+            amountLabel.appendChild(amountInput);
+            row.append(nameLabel, amountLabel);
+
+            if (removable) {
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.className = 'rounded-xl border border-red-200 px-3 py-2 text-sm text-red-700 hover:bg-red-50';
+                remove.textContent = 'Quitar';
+                remove.addEventListener('click', () => {
+                    row.remove();
+                    updateFinanceTotals();
+                });
+                row.appendChild(remove);
+            }
+            row.querySelectorAll('input').forEach(input => input.addEventListener('input', updateFinanceTotals));
+            document.getElementById('finance-communities').appendChild(row);
+            updateFinanceTotals();
+        }
+
+        function getFinanceValues() {
+            const communities = Array.from(document.querySelectorAll('#finance-communities > div')).map(row => ({
+                name: row.querySelector('.finance-community-name').value.trim(),
+                amount: Number(row.querySelector('.finance-community-amount').value || 0)
+            }));
+            const expenses = { personnel: {}, taxes: {}, operations: {} };
+            document.querySelectorAll('.finance-amount').forEach(input => {
+                expenses[input.dataset.financeGroup][input.dataset.financeKey] = Number(input.value || 0);
+            });
+            return { communities, expenses };
+        }
+
+        function updateFinanceTotals() {
+            const { communities, expenses } = getFinanceValues();
+            const totalIncome = communities.reduce((total, community) => total + community.amount, 0);
+            const totalExpenses = Object.values(expenses).reduce(
+                (total, group) => total + Object.values(group).reduce((subtotal, amount) => subtotal + amount, 0),
+                0
+            );
+            const netProfit = totalIncome - totalExpenses;
+            document.getElementById('finance-income-total').textContent = financeCurrency.format(totalIncome);
+            document.getElementById('finance-summary-income').textContent = financeCurrency.format(totalIncome);
+            document.getElementById('finance-expense-total').textContent = financeCurrency.format(totalExpenses);
+            document.getElementById('finance-net-profit').textContent = financeCurrency.format(netProfit);
+        }
+
+        function showFinanceStatus(message, isError = false) {
+            const status = document.getElementById('finance-save-status');
+            status.textContent = message;
+            status.className = `mt-4 rounded-lg p-3 text-sm ${isError ? 'bg-slate-100 text-slate-700' : 'bg-emerald-50 text-emerald-700'}`;
+        }
+
+        function populateMonthlyFinance(record) {
+            document.getElementById('finance-month').value = record.month;
+            const communityContainer = document.getElementById('finance-communities');
+            communityContainer.replaceChildren();
+            record.incomes.communities.forEach(community => {
+                addFinanceCommunity(community.name, String(community.amount), record.incomes.communities.length > 3);
+            });
+            while (communityContainer.children.length < 3) {
+                addFinanceCommunity(`Comunidad ${communityContainer.children.length + 1}`);
+            }
+            document.querySelectorAll('.finance-amount').forEach(input => {
+                input.value = String(record.expenses?.[input.dataset.financeGroup]?.[input.dataset.financeKey] ?? 0);
+            });
+            updateFinanceTotals();
+        }
+
+        function addMonthlyFinanceArchiveRecord(record, filename) {
+            const id = `monthly-finance-${record.month}`;
+            for (let index = documents.length - 1; index >= 0; index -= 1) {
+                if (documents[index].id === id) {
+                    if (documents[index].url) URL.revokeObjectURL(documents[index].url);
+                    documents.splice(index, 1);
+                }
+            }
+            const content = JSON.stringify(record, null, 2);
+            documents.push({
+                id,
+                name: filename,
+                folderId: 5,
+                type: 'application/json',
+                url: URL.createObjectURL(new Blob([content], { type: 'application/json' })),
+                managedByFinance: true
+            });
+            renderArchive();
+        }
+
+        async function saveMonthlyFinance() {
+            const month = document.getElementById('finance-month');
+            const communities = document.querySelectorAll('.finance-community-name');
+            if (!month.reportValidity() || !Array.from(communities).every(input => input.reportValidity())) return;
+            const amountInputs = document.querySelectorAll('.finance-amount, .finance-community-amount');
+            if (!Array.from(amountInputs).every(input => input.reportValidity())) return;
+
+            const button = document.getElementById('finance-save');
+            button.disabled = true;
+            try {
+                const values = getFinanceValues();
+                const { record, filename } = await requestApi('/api/admin/monthly-finances', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        month: month.value,
+                        incomes: { communities: values.communities },
+                        expenses: values.expenses
+                    })
+                });
+                populateMonthlyFinance(record);
+                showFinanceStatus(`Registro de ${record.month} guardado correctamente como ${filename}.`);
+                addMonthlyFinanceArchiveRecord(record, filename);
+            } catch (error) {
+                showFinanceStatus(error.message, true);
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        function showAdminSecurityStatus(message, isError = false) {
+            const status = document.getElementById('admin-security-status');
+            status.textContent = message;
+            status.className = `mt-4 rounded-lg p-3 text-sm ${isError ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'}`;
+        }
+
+        function formatSecurityTimestamp(value) {
+            const date = new Date(value);
+            return Number.isNaN(date.getTime())
+                ? value
+                : date.toLocaleString('es-ES', { timeZone: 'UTC' });
+        }
+
+        function renderAdminSecurityEvents(attempts, blockedIps) {
+            const attemptsBody = document.getElementById('admin-login-attempts');
+            const blockedBody = document.getElementById('admin-blocked-ips');
+            attemptsBody.replaceChildren();
+            blockedBody.replaceChildren();
+            document.getElementById('admin-login-attempts-empty').classList.toggle('hidden', attempts.length > 0);
+            document.getElementById('admin-blocked-ips-empty').classList.toggle('hidden', blockedIps.length > 0);
+
+            attempts.forEach(attempt => {
+                const row = document.createElement('tr');
+                [formatSecurityTimestamp(attempt.attempted_at), attempt.ip_address, attempt.failure_type].forEach(value => {
+                    const cell = document.createElement('td');
+                    cell.className = 'p-3 align-top';
+                    cell.textContent = value;
+                    row.appendChild(cell);
+                });
+                attemptsBody.appendChild(row);
+            });
+
+            blockedIps.forEach(blocked => {
+                const row = document.createElement('tr');
+                const ipCell = document.createElement('td');
+                ipCell.className = 'p-3';
+                ipCell.textContent = blocked.ip_address;
+                const dateCell = document.createElement('td');
+                dateCell.className = 'p-3';
+                dateCell.textContent = formatSecurityTimestamp(blocked.blocked_at);
+                const actionCell = document.createElement('td');
+                actionCell.className = 'p-3';
+                const unblockButton = document.createElement('button');
+                unblockButton.type = 'button';
+                unblockButton.className = 'rounded-lg border border-brandBlue px-3 py-2 text-sm font-semibold text-brandBlue hover:bg-blue-50 disabled:opacity-50';
+                unblockButton.textContent = 'Desbloquear';
+                unblockButton.addEventListener('click', async () => {
+                    unblockButton.disabled = true;
+                    try {
+                        await requestApi('/api/admin/security/blocked-ips', {
+                            method: 'POST',
+                            body: JSON.stringify({ action: 'unblock', ip: blocked.ip_address })
+                        });
+                        showAdminSecurityStatus(`Se ha desbloqueado ${blocked.ip_address} para el acceso de administrador.`);
+                        await loadAdminSecurityEvents();
+                    } catch (error) {
+                        showAdminSecurityStatus(error.message, true);
+                        unblockButton.disabled = false;
+                    }
+                });
+                actionCell.appendChild(unblockButton);
+                row.append(ipCell, dateCell, actionCell);
+                blockedBody.appendChild(row);
+            });
+        }
+
+        async function loadAdminSecurityEvents() {
+            try {
+                const data = await requestApi('/api/admin/security/login-attempts');
+                renderAdminSecurityEvents(data.attempts, data.blockedIps);
+            } catch (error) {
+                showAdminSecurityStatus(error.message, true);
+            }
+        }
+
+        function showSigningStatus(message, isError = false) {
+            const status = document.getElementById('signing-status');
+            status.textContent = message;
+            status.className = `mt-4 rounded-lg p-3 text-sm ${isError ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'}`;
+        }
+
+        function formatSigningDate(value) {
+            if (!value) return '';
+            const date = new Date(value);
+            return Number.isNaN(date.getTime()) ? value : date.toLocaleString('es-ES');
+        }
+
+        function signingArrayBufferToBase64(buffer) {
+            const bytes = new Uint8Array(buffer);
+            let binary = '';
+            const chunkSize = 0x8000;
+            for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+                binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+            }
+            return btoa(binary);
+        }
+
+        async function signingSha256(buffer) {
+            if (!window.crypto?.subtle) {
+                throw new Error('La huella del documento requiere un contexto seguro (HTTPS o localhost).');
+            }
+            const digest = await window.crypto.subtle.digest('SHA-256', buffer);
+            return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+        }
+
+        function renderSigningDocuments() {
+            const list = document.getElementById('signing-document-list');
+            list.replaceChildren();
+            if (signingDocuments.length === 0) {
+                const empty = document.createElement('p');
+                empty.className = 'p-5 text-sm text-gray-500';
+                empty.textContent = 'No hay documentos. Añade un PDF de empresa para comenzar.';
+                list.appendChild(empty);
+                selectSigningDocument(null);
+                return;
+            }
+            signingDocuments.forEach(item => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = `block w-full p-4 text-left transition hover:bg-blue-50 ${item.id === selectedSigningDocumentId ? 'bg-blue-50' : ''}`;
+                button.dataset.documentId = item.id;
+                button.setAttribute('aria-pressed', String(item.id === selectedSigningDocumentId));
+                const name = document.createElement('span');
+                name.className = 'block break-words text-sm font-semibold text-brandDark';
+                name.textContent = item.filename;
+                const state = document.createElement('span');
+                state.className = `mt-1 inline-flex rounded-full px-2 py-1 text-xs font-semibold ${item.status === 'signed' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`;
+                state.textContent = item.status === 'signed'
+                    ? `Firmado localmente · ${formatSigningDate(item.signed_at)}`
+                    : 'Pendiente de firma';
+                button.append(name, state);
+                button.addEventListener('click', () => selectSigningDocument(item.id));
+                list.appendChild(button);
+            });
+            const selected = signingDocuments.find(item => item.id === selectedSigningDocumentId);
+            if (!selected) selectSigningDocument(signingDocuments[0].id);
+            else selectSigningDocument(selected.id);
+        }
+
+        function selectSigningDocument(documentId) {
+            selectedSigningDocumentId = documentId;
+            const selected = signingDocuments.find(item => item.id === documentId);
+            const preview = document.getElementById('signing-preview');
+            const empty = document.getElementById('signing-preview-empty');
+            const signButton = document.getElementById('signing-sign-button');
+            if (!selected) {
+                preview.removeAttribute('src');
+                preview.hidden = true;
+                empty.hidden = false;
+                document.getElementById('signing-preview-title').textContent = 'Selecciona un documento';
+                document.getElementById('signing-preview-meta').textContent = '';
+                signButton.disabled = true;
+                return;
+            }
+            preview.src = `/api/admin/signing/documents/${encodeURIComponent(selected.id)}/content`;
+            preview.hidden = false;
+            empty.hidden = true;
+            document.getElementById('signing-preview-title').textContent = selected.filename;
+            document.getElementById('signing-preview-meta').textContent =
+                `Huella original SHA-256: ${selected.sha256}${selected.status === 'signed' ? ` · Huella firmada: ${selected.signed_sha256}` : ''}`;
+            signButton.disabled = selected.status !== 'pending';
+            renderSigningDocumentsSelection();
+        }
+
+        function renderSigningDocumentsSelection() {
+            document.querySelectorAll('#signing-document-list > button').forEach(button => {
+                const selected = button.dataset.documentId === selectedSigningDocumentId;
+                button.classList.toggle('bg-blue-50', selected);
+                button.setAttribute('aria-pressed', String(selected));
+            });
+        }
+
+        async function loadSigningDocuments() {
+            try {
+                const result = await requestApi('/api/admin/signing/documents');
+                signingDocuments = result.documents;
+                if (!signingDocuments.some(item => item.id === selectedSigningDocumentId)) {
+                    selectedSigningDocumentId = signingDocuments.find(item => item.status === 'pending')?.id
+                        || signingDocuments[0]?.id
+                        || null;
+                }
+                renderSigningDocuments();
+            } catch (error) {
+                showSigningStatus(error.message, true);
+            }
+        }
+
+        async function addSigningDocument(event) {
+            event.preventDefault();
+            const input = document.getElementById('signing-upload-file');
+            const button = document.getElementById('signing-upload-button');
+            const file = input.files?.[0];
+            if (!file) {
+                showSigningStatus('Selecciona un archivo PDF.', true);
+                return;
+            }
+            if (file.size > 10 * 1024 * 1024) {
+                showSigningStatus('El archivo supera el límite de 10 MB.', true);
+                return;
+            }
+            if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+                showSigningStatus('Solo se pueden añadir documentos PDF.', true);
+                return;
+            }
+            button.disabled = true;
+            try {
+                const content = signingArrayBufferToBase64(await file.arrayBuffer());
+                await requestApi('/api/admin/signing/documents', {
+                    method: 'POST',
+                    body: JSON.stringify({ filename: file.name, content })
+                });
+                input.value = '';
+                selectedSigningDocumentId = null;
+                showSigningStatus('Documento añadido al panel privado del administrador.');
+                await loadSigningDocuments();
+            } catch (error) {
+                showSigningStatus(error.message, true);
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        function loadAutoScript() {
+            if (window.AutoScript) return Promise.resolve(window.AutoScript);
+            if (!autoScriptPromise) {
+                autoScriptPromise = new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://raw.githubusercontent.com/ctt-gob-es/clienteafirma/f5abc5f919608df5188419f808cb615bcab0c6e9/afirma-ui-miniapplet-deploy/src/main/webapp/js/autoscript.js';
+                    script.async = true;
+                    script.onload = () => window.AutoScript
+                        ? resolve(window.AutoScript)
+                        : reject(new Error('No se pudo inicializar el cliente web de AutoFirma.'));
+                    script.onerror = () => {
+                        autoScriptPromise = null;
+                        reject(new Error('No se pudo cargar la integración oficial de AutoFirma. Comprueba la conexión a Internet.'));
+                    };
+                    document.head.appendChild(script);
+                });
+            }
+            return autoScriptPromise;
+        }
+
+        function downloadSignedPdf(bytes, filename) {
+            const blob = new Blob([bytes], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename.replace(/\.pdf$/i, '') + '-firmado.pdf';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        }
+
+        async function signSelectedDocument() {
+            const selected = signingDocuments.find(item => item.id === selectedSigningDocumentId);
+            if (!selected || selected.status !== 'pending') return;
+            const button = document.getElementById('signing-sign-button');
+            button.disabled = true;
+            showSigningStatus('Conectando con AutoFirma. Confirma la firma en la aplicación y selecciona tu certificado DNIe.');
+            try {
+                const autoScript = await loadAutoScript();
+                const response = await fetch(`/api/admin/signing/documents/${encodeURIComponent(selected.id)}/content`, {
+                    credentials: 'same-origin',
+                    cache: 'no-store'
+                });
+                if (!response.ok) {
+                    throw new Error(`No se pudo descargar el PDF original (HTTP ${response.status}).`);
+                }
+                const documentBuffer = await response.arrayBuffer();
+                if (await signingSha256(documentBuffer) !== selected.sha256) {
+                    throw new Error('La huella del PDF no coincide con el original registrado. No se iniciará la firma.');
+                }
+                const documentBase64 = signingArrayBufferToBase64(documentBuffer);
+                const signedBase64 = await new Promise((resolve, reject) => {
+                    autoScript.setAppName('Grupo ADA Firma Electrónica');
+                    autoScript.sign(
+                        documentBase64,
+                        'SHA256withRSA',
+                        'PAdES',
+                        [],
+                        resolve,
+                        error => reject(new Error(typeof error === 'string' ? error : 'AutoFirma canceló la operación o devolvió un error.'))
+                    );
+                });
+                if (typeof signedBase64 !== 'string' || !signedBase64) {
+                    throw new Error('AutoFirma no devolvió un PDF firmado.');
+                }
+                const binary = atob(signedBase64.replace(/\s/g, ''));
+                const signedBytes = new Uint8Array(binary.length);
+                for (let index = 0; index < binary.length; index += 1) {
+                    signedBytes[index] = binary.charCodeAt(index);
+                }
+                if (new TextDecoder().decode(signedBytes.subarray(0, 5)) !== '%PDF-') {
+                    throw new Error('AutoFirma no devolvió un PDF PAdES válido.');
+                }
+                const signedHash = await signingSha256(signedBytes.buffer);
+                downloadSignedPdf(signedBytes, selected.filename);
+                try {
+                    await requestApi(`/api/admin/signing/documents/${encodeURIComponent(selected.id)}/signed`, {
+                        method: 'POST',
+                        body: JSON.stringify({ sha256: signedHash })
+                    });
+                    showSigningStatus(`Firma generada por AutoFirma y descargada en tu equipo. La web conserva el estado y la huella, no el PDF firmado ni datos del certificado.`);
+                    await loadSigningDocuments();
+                } catch (error) {
+                    showSigningStatus(`El PDF firmado se descargó en tu equipo, pero no se pudo actualizar el estado en el panel: ${error.message}`, true);
+                    button.disabled = false;
+                }
+            } catch (error) {
+                showSigningStatus(error.message, true);
+                button.disabled = false;
+            }
+        }
+
+        function initializeSigningControls() {
+            document.getElementById('signing-upload-form').addEventListener('submit', addSigningDocument);
+            document.getElementById('signing-sign-button').addEventListener('click', signSelectedDocument);
+        }
+
+        function initializeAdminSecurityControls() {
+            document.getElementById('admin-block-ip-form').addEventListener('submit', async event => {
+                event.preventDefault();
+                const input = document.getElementById('admin-block-ip');
+                const button = document.getElementById('admin-block-ip-button');
+                if (!input.reportValidity()) return;
+                button.disabled = true;
+                try {
+                    const result = await requestApi('/api/admin/security/blocked-ips', {
+                        method: 'POST',
+                        body: JSON.stringify({ action: 'block', ip: input.value })
+                    });
+                    input.value = '';
+                    showAdminSecurityStatus(`La IP ${result.ip} ha quedado bloqueada para nuevos inicios de sesión de administrador.`);
+                    await loadAdminSecurityEvents();
+                } catch (error) {
+                    showAdminSecurityStatus(error.message, true);
+                } finally {
+                    button.disabled = false;
+                }
+            });
+            document.getElementById('admin-security-refresh').addEventListener('click', loadAdminSecurityEvents);
+        }
+
+        function initializeFinanceControls() {
+            const now = new Date();
+            document.getElementById('finance-month').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            addFinanceCommunity('Comunidad 1');
+            addFinanceCommunity('Comunidad 2');
+            addFinanceCommunity('Comunidad 3');
+            document.querySelectorAll('.finance-amount').forEach(input => input.addEventListener('input', updateFinanceTotals));
+            document.getElementById('finance-add-community').addEventListener('click', () => {
+                const count = document.querySelectorAll('.finance-community-name').length + 1;
+                addFinanceCommunity(`Comunidad ${count}`, '0', true);
+            });
+            document.getElementById('finance-save').addEventListener('click', saveMonthlyFinance);
+            updateFinanceTotals();
+        }
+
+        function showAdminDashboard(user) {
+            if (user.role !== 'admin') {
+                window.location.replace('/worker/fichar.html');
+                return;
+            }
+            if (window.location.pathname !== '/admin/dashboard.html') {
+                window.location.replace('/admin/dashboard.html');
+                return;
+            }
+            loginView.style.display = 'none';
+            adminApp.style.display = 'flex';
+            document.getElementById('admin-user-name').textContent = user.display_name;
+            document.getElementById('admin-user-login').textContent = user.username;
+            loadAttendanceReports();
+            if (!attendanceMap && window.L) {
+                attendanceMap = L.map('attendance-map').setView([40.4168, -3.7038], 6);
+                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+                    maxZoom: 19,
+                    attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, TomTom, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom, 2012'
+                }).addTo(attendanceMap);
+            } else if (!attendanceMap) {
+                document.getElementById('attendance-map').textContent = 'No se pudo cargar Leaflet. Comprueba la conexión e inténtalo de nuevo.';
+            }
+            if (attendanceMap) window.setTimeout(() => attendanceMap.invalidateSize(), 0);
+            refreshActiveWorkers();
+            if (!attendanceRefreshTimer) attendanceRefreshTimer = window.setInterval(refreshActiveWorkers, 10000);
+        }
+
+        async function refreshActiveWorkers() {
+            const errorElement = document.getElementById('attendance-error');
+            try {
+                const { workers } = await requestApi('/api/admin/active');
+                errorElement.classList.add('hidden');
+                renderActiveWorkers(workers);
+            } catch (error) {
+                errorElement.textContent = error.message;
+                errorElement.classList.remove('hidden');
+            }
+        }
+
+        function showWorkersManagementMessage(message, isError = false) {
+            const workersManagementMessage = document.getElementById('workers-management-message');
+            workersManagementMessage.textContent = message;
+            workersManagementMessage.className = `p-5 text-sm ${isError ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`;
+        }
+
+        async function loadManagedWorkers() {
+            const table = document.getElementById('managed-workers-table');
+            const message = document.getElementById('workers-management-message');
+            if (table.childElementCount === 0) {
+                message.textContent = 'Cargando operarios...';
+                message.className = 'p-5 text-sm text-gray-500';
+            }
+            try {
+                const { workers } = await requestApi('/api/admin/workers');
+                table.replaceChildren();
+                workers.forEach(worker => {
+                    const row = document.createElement('tr');
+                    const pin = document.createElement('td');
+                    pin.className = 'p-4 font-mono font-bold tracking-widest text-brandBlue';
+                    pin.textContent = worker.pin;
+                    const department = document.createElement('td');
+                    department.className = 'p-4 capitalize text-gray-600';
+                    department.textContent = worker.department;
+                    const firstNameCell = document.createElement('td');
+                    firstNameCell.className = 'p-3';
+                    const firstName = document.createElement('input');
+                    firstName.type = 'text';
+                    firstName.maxLength = 60;
+                    firstName.required = true;
+                    firstName.value = worker.first_name;
+                    firstName.setAttribute('aria-label', `Nombre de operario con PIN ${worker.pin}`);
+                    firstName.className = 'w-full rounded-lg border border-gray-300 px-3 py-2';
+                    firstNameCell.appendChild(firstName);
+                    const lastNameCell = document.createElement('td');
+                    lastNameCell.className = 'p-3';
+                    const lastName = document.createElement('input');
+                    lastName.type = 'text';
+                    lastName.maxLength = 60;
+                    lastName.required = true;
+                    lastName.value = worker.last_name;
+                    lastName.setAttribute('aria-label', `Apellido de operario con PIN ${worker.pin}`);
+                    lastName.className = 'w-full rounded-lg border border-gray-300 px-3 py-2';
+                    lastNameCell.appendChild(lastName);
+                    const actionCell = document.createElement('td');
+                    actionCell.className = 'p-3';
+                    const saveButton = document.createElement('button');
+                    saveButton.type = 'button';
+                    saveButton.textContent = 'Guardar';
+                    saveButton.className = 'rounded-lg bg-brandBlue px-4 py-2 font-semibold text-white hover:bg-blue-800 disabled:opacity-50';
+                    saveButton.addEventListener('click', async () => {
+                        saveButton.disabled = true;
+                        try {
+                            await requestApi(`/api/admin/workers/${worker.id}`, {
+                                method: 'PUT',
+                                body: JSON.stringify({
+                                    first_name: firstName.value,
+                                    last_name: lastName.value
+                                })
+                            });
+                            showWorkersManagementMessage(`Cambios guardados para el PIN ${worker.pin}.`);
+                            refreshActiveWorkers();
+                        } catch (error) {
+                            showWorkersManagementMessage(error.message, true);
+                        } finally {
+                            saveButton.disabled = false;
+                        }
+                    });
+                    actionCell.appendChild(saveButton);
+                    row.append(pin, department, firstNameCell, lastNameCell, actionCell);
+                    table.appendChild(row);
+                });
+                if (workers.length === 0) {
+                    showWorkersManagementMessage('No hay operarios configurados.', true);
+                } else {
+                    message.className = 'hidden';
+                }
+            } catch (error) {
+                showWorkersManagementMessage(error.message, true);
+            }
+        }
+
+        function renderActiveWorkers(workers) {
+            const table = document.getElementById('active-workers-table');
+            const emptyMessage = document.getElementById('no-active-workers');
+            const count = document.getElementById('active-worker-count');
+            table.replaceChildren();
+            emptyMessage.classList.toggle('hidden', workers.length > 0);
+            count.textContent = `${workers.length} activo${workers.length === 1 ? '' : 's'}`;
+            document.getElementById('stat-workers').textContent = String(workers.length);
+            const currentIds = new Set();
+
+            workers.forEach(worker => {
+                currentIds.add(worker.id);
+                const row = document.createElement('tr');
+                row.className = 'cursor-pointer transition hover:bg-blue-50 focus-within:bg-blue-50';
+                row.tabIndex = 0;
+                row.setAttribute('aria-label', `Centrar mapa en ${worker.name}`);
+                const nameCell = document.createElement('td');
+                nameCell.className = 'p-4 font-semibold text-brandDark';
+                nameCell.textContent = worker.name;
+                const departmentCell = document.createElement('td');
+                departmentCell.className = 'p-4 capitalize text-gray-600';
+                departmentCell.textContent = worker.department;
+                const timeCell = document.createElement('td');
+                timeCell.className = 'p-4 text-gray-600';
+                timeCell.textContent = new Date(worker.recorded_at).toLocaleTimeString('es-ES');
+                const accuracyCell = document.createElement('td');
+                accuracyCell.className = 'p-4 text-gray-600';
+                accuracyCell.textContent = `±${Math.round(worker.accuracy)} m`;
+                row.append(nameCell, departmentCell, timeCell, accuracyCell);
+                const focusWorker = () => {
+                    if (!attendanceMap) return;
+                    const position = [worker.latitude, worker.longitude];
+                    attendanceMap.setView(position, 16);
+                    const marker = attendanceMarkers.get(worker.id);
+                    if (marker) marker.openPopup();
+                };
+                row.addEventListener('click', focusWorker);
+                row.addEventListener('keydown', event => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        focusWorker();
+                    }
+                });
+                table.appendChild(row);
+
+                if (attendanceMap) {
+                    const departmentKey = typeof worker.department === 'string'
+                        ? worker.department.trim().toLocaleLowerCase('es')
+                        : '';
+                    const markerStyle = attendanceMarkerStyles[departmentKey];
+                    let marker = attendanceMarkers.get(worker.id);
+                    if (!markerStyle) {
+                        if (marker) {
+                            marker.remove();
+                            attendanceMarkers.delete(worker.id);
+                        }
+                        return;
+                    }
+                    if (!marker) {
+                        marker = L.circleMarker([worker.latitude, worker.longitude], {
+                            ...markerStyle,
+                            radius: 9,
+                            weight: 2,
+                            fillOpacity: 1
+                        }).addTo(attendanceMap);
+                        attendanceMarkers.set(worker.id, marker);
+                    } else {
+                        marker.setLatLng([worker.latitude, worker.longitude]);
+                        marker.setStyle(markerStyle);
+                    }
+                    const popup = document.createElement('strong');
+                    popup.textContent = worker.name;
+                    marker.bindPopup(popup);
+                }
+            });
+
+            attendanceMarkers.forEach((marker, id) => {
+                if (!currentIds.has(id)) {
+                    marker.remove();
+                    attendanceMarkers.delete(id);
+                }
+            });
+        }
+
+        loginForm.addEventListener('submit', async event => {
+            event.preventDefault();
+            const submitButton = document.getElementById('login-submit');
+            submitButton.disabled = true;
+            loginError.classList.add('hidden');
+            try {
+                const { user } = await requestApi('/api/login', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        username: document.getElementById('login-username').value,
+                        pin: document.getElementById('login-pin').value
+                    })
+                });
+                window.location.replace(user.role === 'worker' ? '/worker/fichar.html' : '/admin/dashboard.html');
+            } catch (error) {
+                loginError.textContent = error.message;
+                loginError.classList.remove('hidden');
+            } finally {
+                submitButton.disabled = false;
+            }
+        });
+
+        document.getElementById('logout-button').addEventListener('click', async () => {
+            try {
+                await requestApi('/api/logout', { method: 'POST', body: '{}' });
+                window.location.replace('/');
+            } catch (error) {
+                const errorElement = document.getElementById('attendance-error');
+                errorElement.textContent = error.message;
+                errorElement.classList.remove('hidden');
+            }
+        });
+
+        document.getElementById('nav-attendance').addEventListener('click', () => {
+            if (attendanceMap) window.setTimeout(() => attendanceMap.invalidateSize(), 0);
+        });
+        document.getElementById('nav-archive').addEventListener('click', loadAttendanceReports);
+        document.getElementById('attendance-edit-form').addEventListener('submit', saveAttendanceEdit);
+        document.getElementById('attendance-edit-close').addEventListener('click', closeAttendanceEdit);
+        document.getElementById('attendance-edit-cancel').addEventListener('click', closeAttendanceEdit);
+        document.getElementById('monthly-attendance-search').addEventListener('input', renderMonthlyAttendance);
+        const currentMonth = new Date();
+        document.getElementById('monthly-attendance-month').value = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`;
+        document.getElementById('monthly-attendance-month').addEventListener('change', renderMonthlyAttendance);
+        document.getElementById('monthly-attendance-print').addEventListener('click', () => {
+            if (document.getElementById('monthly-attendance-table').querySelectorAll('tr input').length === 0) return;
+            document.body.classList.add('printing-attendance');
+            window.print();
+        });
+        document.getElementById('invite-link').href = `https://wa.me/?text=${encodeURIComponent(`Te invito a acceder al portal de Grupo Ada: ${window.location.origin}/?select=1`)}`;
+        window.addEventListener('afterprint', () => document.body.classList.remove('printing-attendance'));
+        initializeFinanceControls();
+        initializeAdminSecurityControls();
+        initializeSigningControls();
+
+        if (new URLSearchParams(window.location.search).get('select') === '1') {
+            loginView.style.display = 'flex';
+            adminApp.style.display = 'none';
+        } else {
+            requestApi('/api/session')
+                .then(({ user }) => showAdminDashboard(user))
+                .catch(() => {
+                    loginView.style.display = 'flex';
+                    adminApp.style.display = 'none';
+                });
         }
     </script>
 </body>

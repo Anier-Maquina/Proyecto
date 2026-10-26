@@ -1,0 +1,8 @@
+/ /P%C3%A1gina%20Web%20de%20la%20Empresa.html 200!
+/login /index.html 200!
+/admin/dashboard.html /index.html 200!
+/worker/fichar.html /control_horario_trabajador.html 200!
+/rh/* https://stalwart-pudding-467a32.netlify.app/:splat 200
+/api/admin/signing/documents/* https://api.serviciosgrupoada.es/api/admin/signing/documents/:splat 200
+/api/admin/signing/documents https://api.serviciosgrupoada.es/api/admin/signing/documents 200
+/api/* /.netlify/functions/api/:splat 200
