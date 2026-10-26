@@ -1511,7 +1511,9 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
         self.send_json(405, {"error": "Método no permitido."})
 
 
-def serve(host="0.0.0.0", port=8000):
+def serve(host="0.0.0.0", port=None):
+    if port is None:
+        port = int(os.environ.get("PORT", "8000"))
     initialize_database()
     server = ThreadingHTTPServer((host, port), AttendanceHandler)
     print(f"Servidor disponible en http://{host}:{server.server_port}")
