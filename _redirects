@@ -3,6 +3,6 @@
 /admin/dashboard.html /index.html 200!
 /worker/fichar.html /control_horario_trabajador.html 200!
 /rh/* https://stalwart-pudding-467a32.netlify.app/:splat 200
-/api/admin/signing/documents/* https://api.serviciosgrupoada.es/api/admin/signing/documents/:splat 200
-/api/admin/signing/documents https://api.serviciosgrupoada.es/api/admin/signing/documents 200
+/api/admin/signing/documents/* https://proyecto-87t9.onrender.com/api/admin/signing/documents/:splat 200
+/api/admin/signing/documents https://proyecto-87t9.onrender.com/api/admin/signing/documents 200
 /api/* /.netlify/functions/api/:splat 200

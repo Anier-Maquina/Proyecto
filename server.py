@@ -834,6 +834,9 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         path = urlparse(self.path).path
+        if path in ("/ping", "/health"):
+            self.send_json(200, {"status": "online", "message": "El servidor de Grupo ADA está online."})
+            return
         if path == "/api/session":
             user = self.current_user()
             if not user:
@@ -1513,7 +1516,7 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
 
 def serve(host="0.0.0.0", port=None):
     if port is None:
-        port = int(os.environ.get("PORT", "8000"))
+        port = int(os.environ.get("PORT", "3000"))
     initialize_database()
     server = ThreadingHTTPServer((host, port), AttendanceHandler)
     print(f"Servidor disponible en http://{host}:{server.server_port}")
@@ -1535,7 +1538,7 @@ def main():
     subparsers.add_parser("unlock-admin", help="Desbloquear la cuenta administrador tras intentos fallidos.")
     serve_parser = subparsers.add_parser("serve", help="Iniciar el servidor web.")
     serve_parser.add_argument("--host", default="0.0.0.0")
-    serve_parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", "8000")))
+    serve_parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", "3000")))
     args = parser.parse_args()
 
     if args.command == "create-user":

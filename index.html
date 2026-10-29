@@ -1763,10 +1763,11 @@
             'conserjería': { color: '#1e3a8a', fillColor: '#2563eb' },
             jardinería: { color: '#14532d', fillColor: '#16a34a' }
         };
+        const API_BASE_URL = 'https://proyecto-87t9.onrender.com';
         async function requestApi(path, options = {}) {
             let response;
             try {
-                response = await fetch(path, {
+                response = await fetch(`${API_BASE_URL}${path}`, {
                     credentials: 'same-origin',
                     headers: { 'Content-Type': 'application/json', ...options.headers },
                     ...options
@@ -2759,7 +2760,7 @@
             document.body.classList.add('printing-attendance');
             window.print();
         });
-        document.getElementById('invite-link').href = `https://wa.me/?text=${encodeURIComponent(`Te invito a acceder al portal de Grupo Ada: ${window.location.origin}/?select=1`)}`;
+        document.getElementById('invite-link').href = `https://wa.me/?text=${encodeURIComponent('Te invito a acceder al portal de Grupo Ada: https://serviciosgrupoada.es/login')}`;
         window.addEventListener('afterprint', () => document.body.classList.remove('printing-attendance'));
         initializeFinanceControls();
         initializeAdminSecurityControls();

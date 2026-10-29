@@ -1,4 +1,4 @@
-const BACKEND_ORIGIN = "https://api.serviciosgrupoada.es";
+const BACKEND_ORIGIN = "https://proyecto-87t9.onrender.com";
 const FUNCTION_PATH = "/.netlify/functions/api";
 const HOP_BY_HOP_HEADERS = new Set([
     "connection",

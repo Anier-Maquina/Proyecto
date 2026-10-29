@@ -77,6 +77,16 @@ class AttendanceServerTests(unittest.TestCase):
         self.assertEqual(response.status, 200)
         return result["user"]
 
+    def test_ping_and_health_are_public_lightweight_routes(self):
+        for path in ("/ping", "/health"):
+            with self.subTest(path=path):
+                response, payload = self.request(path)
+                self.assertEqual(response.status, 200)
+                self.assertEqual(
+                    payload,
+                    {"status": "online", "message": "El servidor de Grupo ADA está online."},
+                )
+
     def test_starter_workers_admin_pin_and_name_management(self):
         self.login_pin("administrador", "7804")
         response, payload = self.request("/api/admin/workers")
