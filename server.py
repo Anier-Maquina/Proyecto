@@ -29,6 +29,22 @@ PBKDF2_ITERATIONS = 310_000
 COOKIE_NAME = "control_horario_session"
 MAX_REQUEST_BYTES = 16_384
 MAX_SIGNING_DOCUMENT_BYTES = 10 * 1024 * 1024
+CORS_DEFAULT_ORIGINS = (
+    "https://serviciosgrupoada.es",
+    "https://www.serviciosgrupoada.es",
+    "https://stalwart-pudding-467a32.netlify.app",
+)
+CORS_ALLOWED_ORIGINS = frozenset(
+    origin.strip().rstrip("/")
+    for origin in os.environ.get(
+        "ATTENDANCE_CORS_ORIGINS", ",".join(CORS_DEFAULT_ORIGINS)
+    ).split(",")
+    if origin.strip()
+)
+SECURE_COOKIE = (
+    os.environ.get("ATTENDANCE_SECURE_COOKIE") == "1"
+    or os.environ.get("RENDER", "").lower() == "true"
+)
 LOGIN_FAILURE_LIMIT = 5
 LOGIN_FAILURE_WINDOW = 15 * 60
 LOGIN_FAILURES = {}
@@ -741,6 +757,11 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("X-Frame-Options", "DENY")
         self.send_header("Referrer-Policy", "same-origin")
+        origin = self.headers.get("Origin")
+        if origin and origin.rstrip("/") in CORS_ALLOWED_ORIGINS:
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Access-Control-Allow-Credentials", "true")
+            self.send_header("Vary", "Origin")
         super().end_headers()
 
     def send_json(self, status, payload, extra_headers=None):
@@ -1270,9 +1291,10 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
                 {"user": user},
                 {
                     "Set-Cookie": (
-                        f"{COOKIE_NAME}={token}; Path=/; HttpOnly; SameSite=Strict; "
+                        f"{COOKIE_NAME}={token}; Path=/; HttpOnly; "
+                        f"SameSite={'None' if SECURE_COOKIE else 'Strict'}; "
                         f"Max-Age={int(SESSION_DURATION.total_seconds())}"
-                        f"{'; Secure' if os.environ.get('ATTENDANCE_SECURE_COOKIE') == '1' else ''}"
+                        f"{'; Secure' if SECURE_COOKIE else ''}"
                     )
                 },
             )
@@ -1371,7 +1393,13 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
             self.send_json(
                 200,
                 {"ok": True},
-                {"Set-Cookie": f"{COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0"},
+                {
+                    "Set-Cookie": (
+                        f"{COOKIE_NAME}=; Path=/; HttpOnly; "
+                        f"SameSite={'None' if SECURE_COOKIE else 'Strict'}; Max-Age=0"
+                        f"{'; Secure' if SECURE_COOKIE else ''}"
+                    )
+                },
             )
             return
 
@@ -1511,7 +1539,13 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
         self.send_json(404, {"error": "Ruta no encontrada."})
 
     def do_OPTIONS(self):
-        self.send_json(405, {"error": "Método no permitido."})
+        self.send_response(204)
+        self.send_header("Allow", "GET, POST, PUT, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Max-Age", "600")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
 
 
 def serve(host="0.0.0.0", port=None):

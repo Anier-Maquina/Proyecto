@@ -87,6 +87,22 @@ class AttendanceServerTests(unittest.TestCase):
                     {"status": "online", "message": "El servidor de Grupo ADA está online."},
                 )
 
+    def test_cors_allows_configured_frontend_and_preflight(self):
+        request = Request(
+            f"{self.base_url}/api/session",
+            headers={"Origin": "https://serviciosgrupoada.es"},
+            method="OPTIONS",
+        )
+        response = self.opener.open(request)
+        self.assertEqual(response.status, 204)
+        self.assertEqual(
+            response.headers["Access-Control-Allow-Origin"],
+            "https://serviciosgrupoada.es",
+        )
+        self.assertEqual(response.headers["Access-Control-Allow-Credentials"], "true")
+        self.assertIn("POST", response.headers["Access-Control-Allow-Methods"])
+        response.close()
+
     def test_starter_workers_admin_pin_and_name_management(self):
         self.login_pin("administrador", "7804")
         response, payload = self.request("/api/admin/workers")

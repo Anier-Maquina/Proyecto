@@ -1768,7 +1768,7 @@
             let response;
             try {
                 response = await fetch(`${API_BASE_URL}${path}`, {
-                    credentials: 'same-origin',
+                    credentials: 'include',
                     headers: { 'Content-Type': 'application/json', ...options.headers },
                     ...options
                 });
@@ -2300,7 +2300,7 @@
                 signButton.disabled = true;
                 return;
             }
-            preview.src = `/api/admin/signing/documents/${encodeURIComponent(selected.id)}/content`;
+            preview.src = `${API_BASE_URL}/api/admin/signing/documents/${encodeURIComponent(selected.id)}/content`;
             preview.hidden = false;
             empty.hidden = true;
             document.getElementById('signing-preview-title').textContent = selected.filename;
@@ -2408,8 +2408,8 @@
             showSigningStatus('Conectando con AutoFirma. Confirma la firma en la aplicación y selecciona tu certificado DNIe.');
             try {
                 const autoScript = await loadAutoScript();
-                const response = await fetch(`/api/admin/signing/documents/${encodeURIComponent(selected.id)}/content`, {
-                    credentials: 'same-origin',
+                const response = await fetch(`${API_BASE_URL}/api/admin/signing/documents/${encodeURIComponent(selected.id)}/content`, {
+                    credentials: 'include',
                     cache: 'no-store'
                 });
                 if (!response.ok) {
