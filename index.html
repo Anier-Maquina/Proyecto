@@ -31,6 +31,128 @@
         #attendance-map {
             min-height: 420px;
         }
+        #mobile-menu-toggle {
+            display: none;
+        }
+        #mobile-menu-backdrop {
+            display: none;
+        }
+        @media (max-width: 767px) {
+            #admin-app {
+                min-width: 0;
+                height: 100vh;
+                height: 100dvh;
+            }
+            #admin-sidebar {
+                position: fixed;
+                inset: 0 auto 0 0;
+                z-index: 40;
+                width: min(18rem, 88vw);
+                height: 100vh;
+                height: 100dvh;
+                transform: translateX(-100%);
+                transition: transform 200ms ease;
+            }
+            #admin-app.mobile-menu-open #admin-sidebar {
+                transform: translateX(0);
+            }
+            #mobile-menu-backdrop {
+                position: fixed;
+                inset: 0;
+                z-index: 30;
+                display: none;
+                border: 0;
+                background: rgb(15 23 42 / 55%);
+            }
+            #admin-app.mobile-menu-open #mobile-menu-backdrop {
+                display: block;
+            }
+            #mobile-menu-toggle {
+                display: inline-flex;
+                min-width: 2.75rem;
+                min-height: 2.75rem;
+                align-items: center;
+                justify-content: center;
+            }
+            #admin-header {
+                display: grid;
+                grid-template-columns: 2.75rem minmax(0, 1fr) auto auto;
+                grid-template-rows: auto auto;
+                column-gap: 0.5rem;
+                row-gap: 0.375rem;
+                height: auto;
+                min-height: 0;
+                padding: 0.5rem 1rem;
+            }
+            #admin-header-primary {
+                display: contents;
+            }
+            #header-title {
+                grid-column: 2 / -1;
+                grid-row: 1;
+                min-width: 0;
+                font-size: 1rem;
+                line-height: 1.25rem;
+            }
+            #mobile-menu-toggle {
+                grid-column: 1;
+                grid-row: 1;
+            }
+            #admin-header-primary > a {
+                align-self: center;
+                justify-self: start;
+                padding: 0.375rem 0.5rem;
+                font-size: 0.6875rem;
+                white-space: nowrap;
+            }
+            #admin-header-primary > a[href^="https://mail.google.com"] {
+                grid-column: 1;
+                grid-row: 2;
+            }
+            #invite-link {
+                grid-column: 2;
+                grid-row: 2;
+            }
+            #invite-app-link {
+                grid-column: 3;
+                grid-row: 2;
+            }
+            #admin-header-account {
+                display: contents;
+            }
+            #logout-button {
+                grid-column: 4;
+                grid-row: 2;
+                justify-self: end;
+                padding: 0.375rem 0.5rem;
+                font-size: 0.6875rem;
+                white-space: nowrap;
+            }
+            #admin-plan-badge {
+                display: none;
+            }
+            #admin-main {
+                min-width: 0;
+                padding: 1rem;
+                overflow-x: hidden;
+            }
+            #attendance-map {
+                min-height: 320px;
+            }
+        }
+        @media (max-width: 380px) {
+            #admin-header-primary > a {
+                padding-inline: 0.5rem;
+            }
+            #admin-main {
+                padding: 0.75rem;
+            }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            #admin-sidebar {
+                transition: none;
+            }
+        }
         @media print {
             body.printing-attendance > #login-view,
             body.printing-attendance aside,
@@ -154,7 +276,8 @@
         </form>
     </section>
     <div id="admin-app" class="flex h-screen overflow-hidden" style="display:none">
-        <aside class="w-64 bg-brandDark text-white flex flex-col shadow-xl z-20">
+        <button id="mobile-menu-backdrop" type="button" aria-label="Cerrar el menú"></button>
+        <aside id="admin-sidebar" aria-label="Navegación principal" class="w-64 bg-brandDark text-white flex flex-col shadow-xl z-20">
             <div class="p-5 flex items-center space-x-3 border-b border-gray-700">
                 <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center p-1 shadow-inner">
                     <span class="text-brandBlue font-black text-xl">DA</span>
@@ -188,20 +311,25 @@
         </aside>
 
         <div class="flex-1 flex flex-col overflow-hidden">
-            <header class="h-16 bg-white shadow-sm flex items-center justify-between px-8 z-10">
-                <div class="flex min-w-0 items-center gap-3">
+            <header id="admin-header" class="h-16 bg-white shadow-sm flex items-center justify-between px-8 z-10">
+                <div id="admin-header-primary" class="flex min-w-0 items-center gap-3">
+                    <button id="mobile-menu-toggle" type="button" aria-label="Abrir menú de navegación" aria-controls="admin-sidebar" aria-expanded="false" class="rounded-lg border border-gray-200 text-brandDark hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-brandBlue">
+                        <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                            <path d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
                     <h2 id="header-title" class="text-xl font-bold text-brandDark">Panel Principal</h2>
                     <a href="https://mail.google.com/mail/?authuser=info%40serviciosgrupoada.es#inbox" target="_blank" rel="noopener noreferrer" class="rounded-lg border border-brandBlue px-3 py-2 text-sm font-semibold text-brandBlue hover:bg-blue-50">Gmail</a>
                     <a id="invite-link" href="https://wa.me/" target="_blank" rel="noopener noreferrer" class="rounded-lg bg-[#25D366] px-3 py-2 text-sm font-semibold text-white hover:bg-green-600">Invitar</a>
                     <a id="invite-app-link" href="https://wa.me/" target="_blank" rel="noopener noreferrer" class="rounded-lg bg-brandBlue px-3 py-2 text-sm font-semibold text-white hover:bg-blue-800">Invitar APP</a>
                 </div>
-                <div class="flex items-center space-x-4">
-                    <span class="bg-brandTeal/10 text-brandTeal text-xs font-semibold px-3 py-1 rounded-full border border-brandTeal/20">Plan Superior Empresarial</span>
+                <div id="admin-header-account" class="flex items-center space-x-4">
+                    <span id="admin-plan-badge" class="bg-brandTeal/10 text-brandTeal text-xs font-semibold px-3 py-1 rounded-full border border-brandTeal/20">Plan Superior Empresarial</span>
                     <button id="logout-button" type="button" class="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50">Cerrar sesión</button>
                 </div>
             </header>
 
-            <main class="flex-1 overflow-y-auto p-8 bg-brandLight">
+            <main id="admin-main" class="flex-1 overflow-y-auto p-8 bg-brandLight">
                 <!-- DASHBOARD -->
                 <div id="tab-dashboard" class="space-y-6 tab-content">
                     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
@@ -746,6 +874,27 @@
         const tasks = [];
         const monthNames = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
+        function setAdminMobileMenuOpen(isOpen, returnFocus = false) {
+            const adminApp = document.getElementById('admin-app');
+            const sidebar = document.getElementById('admin-sidebar');
+            const menuToggle = document.getElementById('mobile-menu-toggle');
+            const isMobile = window.matchMedia('(max-width: 767px)').matches;
+            const shouldOpen = isMobile && isOpen;
+
+            if (isMobile && !shouldOpen && sidebar.contains(document.activeElement)) {
+                menuToggle.focus();
+            }
+            adminApp.classList.toggle('mobile-menu-open', shouldOpen);
+            menuToggle.setAttribute('aria-expanded', String(shouldOpen));
+            menuToggle.setAttribute('aria-label', shouldOpen ? 'Cerrar menú de navegación' : 'Abrir menú de navegación');
+            sidebar.setAttribute('aria-hidden', String(isMobile && !shouldOpen));
+            sidebar.inert = isMobile && !shouldOpen;
+
+            if (returnFocus && isMobile) menuToggle.focus();
+            if (shouldOpen) sidebar.querySelector('nav a')?.focus();
+        }
+        setAdminMobileMenuOpen(false);
+
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('bg-brandBlue', 'text-white', 'shadow-md'));
@@ -761,6 +910,7 @@
             if (tabId === 'workers') loadManagedWorkers();
             if (tabId === 'security') loadAdminSecurityEvents();
             if (tabId === 'signing') loadSigningDocuments();
+            setAdminMobileMenuOpen(false);
         }
 
         function showModal(modalId) {
@@ -2755,6 +2905,28 @@
                 errorElement.classList.remove('hidden');
             }
         });
+
+        document.getElementById('mobile-menu-toggle').addEventListener('click', () => {
+            const isOpen = document.getElementById('admin-app').classList.contains('mobile-menu-open');
+            setAdminMobileMenuOpen(!isOpen);
+        });
+        document.getElementById('mobile-menu-backdrop').addEventListener('click', () => {
+            setAdminMobileMenuOpen(false, true);
+        });
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape' && document.getElementById('admin-app').classList.contains('mobile-menu-open')) {
+                setAdminMobileMenuOpen(false, true);
+            }
+        });
+        const desktopBreakpoint = window.matchMedia('(min-width: 768px)');
+        const resetMobileMenuForDesktop = () => {
+            setAdminMobileMenuOpen(false);
+        };
+        if (desktopBreakpoint.addEventListener) {
+            desktopBreakpoint.addEventListener('change', resetMobileMenuForDesktop);
+        } else {
+            desktopBreakpoint.addListener(resetMobileMenuForDesktop);
+        }
 
         document.getElementById('nav-attendance').addEventListener('click', () => {
             if (attendanceMap) window.setTimeout(() => attendanceMap.invalidateSize(), 0);
