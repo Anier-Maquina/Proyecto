@@ -193,6 +193,7 @@
                     <h2 id="header-title" class="text-xl font-bold text-brandDark">Panel Principal</h2>
                     <a href="https://mail.google.com/mail/?authuser=info%40serviciosgrupoada.es#inbox" target="_blank" rel="noopener noreferrer" class="rounded-lg border border-brandBlue px-3 py-2 text-sm font-semibold text-brandBlue hover:bg-blue-50">Gmail</a>
                     <a id="invite-link" href="https://wa.me/" target="_blank" rel="noopener noreferrer" class="rounded-lg bg-[#25D366] px-3 py-2 text-sm font-semibold text-white hover:bg-green-600">Invitar</a>
+                    <a id="invite-app-link" href="https://wa.me/" target="_blank" rel="noopener noreferrer" class="rounded-lg bg-brandBlue px-3 py-2 text-sm font-semibold text-white hover:bg-blue-800">Invitar APP</a>
                 </div>
                 <div class="flex items-center space-x-4">
                     <span class="bg-brandTeal/10 text-brandTeal text-xs font-semibold px-3 py-1 rounded-full border border-brandTeal/20">Plan Superior Empresarial</span>
@@ -2772,6 +2773,7 @@
             window.print();
         });
         document.getElementById('invite-link').href = `https://wa.me/?text=${encodeURIComponent('Te invito a acceder al portal de Grupo Ada: https://serviciosgrupoada.es/login')}`;
+        document.getElementById('invite-app-link').href = `https://wa.me/?text=${encodeURIComponent('Te invito a instalar la app de fichaje de Grupo Ada. Descárgala aquí: https://expo.dev/accounts/grupoada/projects/grupo-ada-fichaje/builds/b167e64f-04a0-46a5-a763-f127c8e7389d')}`;
         window.addEventListener('afterprint', () => document.body.classList.remove('printing-attendance'));
         initializeFinanceControls();
         initializeAdminSecurityControls();

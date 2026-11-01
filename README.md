@@ -13,6 +13,25 @@ El inicio de sesión y el almacenamiento de datos dependen de que `server.py` se
 - Python 3.10 o posterior.
 - Un navegador moderno. La geolocalización funciona en `localhost` o en un origen servido mediante HTTPS.
 - Acceso a Internet para descargar Tailwind CSS y Leaflet/OpenStreetMap.
+- Node.js y npm para desarrollar la aplicación móvil de `mobile-worker`.
+
+## Aplicación móvil privada para trabajadores
+
+`mobile-worker` contiene la app Expo para Android e iPhone. El trabajador inicia sesión con su nombre completo y PIN de cuatro dígitos, inicia o finaliza su jornada y puede compartir su última posición GPS con el panel web mientras la jornada está activa. El token Bearer se guarda en el almacenamiento seguro del dispositivo y el backend lo revoca al cerrar sesión. La app móvil solo acepta cuentas de trabajadores.
+
+La app solicita permiso de ubicación «Siempre»/en segundo plano y muestra el estado del seguimiento. En Android mantiene una notificación de servicio en primer plano; en iPhone activa el indicador del sistema para ubicación en segundo plano. Envía actualizaciones como máximo cada minuto o cada 50 metros, según el sistema y la disponibilidad del GPS. El servidor conserva solo la posición más reciente, no el recorrido. Fichar salida detiene el servicio y borra la posición en vivo. El sistema operativo puede suspender o limitar el GPS, por ejemplo, si el usuario fuerza el cierre de la app o activa restricciones de batería; la distribución nativa no garantiza señal GPS cuando el dispositivo no puede obtener ubicación o conectividad.
+
+Para preparar la compilación privada:
+
+```powershell
+cd .\mobile-worker
+npm install
+npx eas-cli login
+npx eas-cli build:configure
+npx eas-cli build --profile apk --platform android
+```
+
+La primera configuración de EAS debe asociar el proyecto a una cuenta Expo. El perfil `apk` genera un APK Android instalable internamente; EAS mostrará un enlace para descargarlo al terminar la compilación. El perfil `preview` también permite generar una compilación iOS de distribución interna. Para instalar en iPhone con distribución Ad Hoc, la cuenta Apple Developer debe registrar los dispositivos de los trabajadores; la instalación privada en iOS no funciona igual que distribuir un APK Android. Para pruebas locales hace falta un dispositivo físico y una compilación nativa/de desarrollo: Expo Go no sustituye la configuración nativa de ubicación en segundo plano. Usa solo dispositivos autorizados y explica a los trabajadores cuándo se comparte la ubicación antes de distribuir la app.
 
 ## Iniciar el servidor e iniciar sesión
 

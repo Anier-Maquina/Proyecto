@@ -1,0 +1,74 @@
+{
+  "expo": {
+    "name": "Grupo ADA Fichaje",
+    "slug": "grupo-ada-fichaje",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "grupoadafichaje",
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Grupo ADA utiliza tu ubicación para registrar la entrada y mostrar la posición del trabajador.",
+          "locationAlwaysAndWhenInUsePermission": "Grupo ADA comparte tu última ubicación durante la jornada activa, incluso con la pantalla bloqueada. El seguimiento se detiene al fichar salida.",
+          "locationAlwaysPermission": "Grupo ADA comparte tu última ubicación durante la jornada activa, incluso con la pantalla bloqueada.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ],
+      "expo-secure-store"
+    ],
+    "ios": {
+      "bundleIdentifier": "com.grupoada.fichaje",
+      "supportsTablet": true,
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "location",
+          "location"
+        ]
+      }
+    },
+    "android": {
+      "package": "com.grupoada.fichaje",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION",
+        "android.permission.POST_NOTIFICATIONS"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "53302d9a-7d17-4b2b-8061-a76027101d3b"
+      }
+    },
+    "owner": "grupoada",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/53302d9a-7d17-4b2b-8061-a76027101d3b"
+    }
+  }
+}

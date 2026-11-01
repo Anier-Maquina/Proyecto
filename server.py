@@ -838,12 +838,18 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
         return payload
 
     def current_user(self):
-        cookie = SimpleCookie()
-        cookie.load(self.headers.get("Cookie", ""))
-        morsel = cookie.get(COOKIE_NAME)
-        if morsel is None:
-            return None
-        token_hash = hashlib.sha256(morsel.value.encode("utf-8")).hexdigest()
+        authorization = self.headers.get("Authorization", "")
+        bearer_match = re.fullmatch(r"Bearer ([A-Za-z0-9_-]{20,128})", authorization)
+        if bearer_match:
+            token = bearer_match.group(1)
+        else:
+            cookie = SimpleCookie()
+            cookie.load(self.headers.get("Cookie", ""))
+            morsel = cookie.get(COOKIE_NAME)
+            if morsel is None:
+                return None
+            token = morsel.value
+        token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
         with database() as connection:
             row = connection.execute(
                 """
@@ -897,6 +903,11 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
                 self.send_json(401, {"error": "Sesión no iniciada."})
                 return
             self.send_json(200, {"user": user})
+            return
+        if path == "/api/mobile/session":
+            user = self.require_role("worker")
+            if user:
+                self.send_json(200, {"user": user})
             return
         if path == "/api/admin/signing/documents":
             if not self.require_role("admin"):
@@ -1242,13 +1253,17 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
             self.send_json(400, {"error": str(error)})
             return
 
-        if path == "/api/login":
+        if path in ("/api/login", "/api/mobile/login"):
+            is_mobile_login = path == "/api/mobile/login"
             username = payload.get("username")
             pin = payload.get("pin")
             if not isinstance(username, str) or not username:
                 self.send_json(400, {"error": "Indica el nombre de usuario y un PIN de 4 dígitos."})
                 return
             is_admin_login = username == "administrador"
+            if is_mobile_login and is_admin_login:
+                self.send_json(403, {"error": "La aplicación móvil está disponible únicamente para trabajadores."})
+                return
             client_ip = self.client_address[0]
             if is_admin_login and is_admin_ip_blocked(client_ip):
                 record_admin_login_event(client_ip, "Acceso rechazado: IP bloqueada")
@@ -1352,18 +1367,21 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
                 key: row[key]
                 for key in ("id", "username", "display_name", "role", "first_name", "last_name", "department")
             }
-            self.send_json(
-                200,
-                {"user": user},
-                {
-                    "Set-Cookie": (
-                        f"{COOKIE_NAME}={token}; Path=/; HttpOnly; "
-                        f"SameSite={'None' if SECURE_COOKIE else 'Strict'}; "
-                        f"Max-Age={int(SESSION_DURATION.total_seconds())}"
-                        f"{'; Secure' if SECURE_COOKIE else ''}"
-                    )
-                },
-            )
+            if is_mobile_login:
+                self.send_json(200, {"user": user, "token": token, "tokenType": "Bearer"})
+            else:
+                self.send_json(
+                    200,
+                    {"user": user},
+                    {
+                        "Set-Cookie": (
+                            f"{COOKIE_NAME}={token}; Path=/; HttpOnly; "
+                            f"SameSite={'None' if SECURE_COOKIE else 'Strict'}; "
+                            f"Max-Age={int(SESSION_DURATION.total_seconds())}"
+                            f"{'; Secure' if SECURE_COOKIE else ''}"
+                        )
+                    },
+                )
             return
 
         if path == "/api/admin/signing/documents":
@@ -1448,34 +1466,55 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
             self.send_json(200, {"ok": True, "status": "signed", "signed_sha256": signed_sha256})
             return
 
-        if path == "/api/logout":
+        if path in ("/api/logout", "/api/mobile/logout"):
             cookie = SimpleCookie()
             cookie.load(self.headers.get("Cookie", ""))
             morsel = cookie.get(COOKIE_NAME)
-            if morsel:
-                token_hash = hashlib.sha256(morsel.value.encode("utf-8")).hexdigest()
+            authorization = self.headers.get("Authorization", "")
+            bearer_match = re.fullmatch(r"Bearer ([A-Za-z0-9_-]{20,128})", authorization)
+            token = bearer_match.group(1) if bearer_match else morsel.value if morsel else None
+            if token:
+                token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
                 with database() as connection:
                     session = connection.execute(
                         "SELECT user_id FROM sessions WHERE token_hash = ?",
                         (token_hash,),
                     ).fetchone()
-                    if session:
+                    if session and path == "/api/mobile/logout":
+                        user = connection.execute(
+                            "SELECT role FROM users WHERE id = ?",
+                            (session["user_id"],),
+                        ).fetchone()
+                        if not user or user["role"] != "worker":
+                            self.send_json(403, {"error": "La aplicación móvil está disponible únicamente para trabajadores."})
+                            return
+                    if session and session["user_id"]:
+                        user = connection.execute(
+                            "SELECT role FROM users WHERE id = ?",
+                            (session["user_id"],),
+                        ).fetchone()
+                    else:
+                        user = None
+                    if session and user and user["role"] == "worker":
                         connection.execute(
                             "DELETE FROM worker_locations WHERE user_id = ?",
                             (session["user_id"],),
                         )
                     connection.execute("DELETE FROM sessions WHERE token_hash = ?", (token_hash,))
-            self.send_json(
-                200,
-                {"ok": True},
-                {
-                    "Set-Cookie": (
-                        f"{COOKIE_NAME}=; Path=/; HttpOnly; "
-                        f"SameSite={'None' if SECURE_COOKIE else 'Strict'}; Max-Age=0"
-                        f"{'; Secure' if SECURE_COOKIE else ''}"
-                    )
-                },
-            )
+            if path == "/api/mobile/logout":
+                self.send_json(200, {"ok": True})
+            else:
+                self.send_json(
+                    200,
+                    {"ok": True},
+                    {
+                        "Set-Cookie": (
+                            f"{COOKIE_NAME}=; Path=/; HttpOnly; "
+                            f"SameSite={'None' if SECURE_COOKIE else 'Strict'}; Max-Age=0"
+                            f"{'; Secure' if SECURE_COOKIE else ''}"
+                        )
+                    },
+                )
             return
 
         if path == "/api/admin/monthly-finances":

@@ -55,12 +55,14 @@ class AttendanceServerTests(unittest.TestCase):
             connection.execute("DELETE FROM admin_login_attempts")
             connection.execute("DELETE FROM admin_blocked_ips")
 
-    def request(self, path, payload=None, method=None):
+    def request(self, path, payload=None, method=None, headers=None):
         data = None if payload is None else json.dumps(payload).encode("utf-8")
+        request_headers = {"Content-Type": "application/json"} if data is not None else {}
+        request_headers.update(headers or {})
         request = Request(
             self.base_url + path,
             data=data,
-            headers={"Content-Type": "application/json"} if data is not None else {},
+            headers=request_headers,
             method=method,
         )
         try:
@@ -102,6 +104,58 @@ class AttendanceServerTests(unittest.TestCase):
         self.assertEqual(response.headers["Access-Control-Allow-Credentials"], "true")
         self.assertIn("POST", response.headers["Access-Control-Allow-Methods"])
         response.close()
+
+    def test_mobile_login_uses_worker_bearer_session_and_revokes_on_logout(self):
+        response, admin_result = self.request(
+            "/api/mobile/login",
+            {"username": "administrador", "pin": "7804"},
+        )
+        self.assertEqual(response.status, 403)
+        self.assertIn("únicamente para trabajadores", admin_result["error"])
+
+        self.opener = build_opener(HTTPCookieProcessor(CookieJar()))
+        response, login_result = self.request(
+            "/api/mobile/login",
+            {"username": "Operario 02", "pin": "4102"},
+        )
+        self.assertEqual(response.status, 200)
+        self.assertEqual(login_result["user"]["role"], "worker")
+        self.assertEqual(login_result["tokenType"], "Bearer")
+        self.assertTrue(login_result["token"])
+        self.assertIsNone(response.headers.get("Set-Cookie"))
+        bearer_headers = {"Authorization": f"Bearer {login_result['token']}"}
+
+        response, session = self.request(
+            "/api/mobile/session",
+            headers=bearer_headers,
+        )
+        self.assertEqual(response.status, 200)
+        self.assertEqual(session["user"]["display_name"], "Operario 02")
+        response, attendance = self.request(
+            "/api/attendance/mine",
+            headers=bearer_headers,
+        )
+        self.assertEqual(response.status, 200)
+        self.assertFalse(attendance["active"])
+        response, _ = self.request(
+            "/api/admin/active",
+            headers=bearer_headers,
+        )
+        self.assertEqual(response.status, 403)
+
+        response, logout_result = self.request(
+            "/api/mobile/logout",
+            {},
+            method="POST",
+            headers=bearer_headers,
+        )
+        self.assertEqual(response.status, 200)
+        self.assertTrue(logout_result["ok"])
+        response, _ = self.request(
+            "/api/mobile/session",
+            headers=bearer_headers,
+        )
+        self.assertEqual(response.status, 401)
 
     def test_starter_workers_admin_pin_and_name_management(self):
         self.login_pin("administrador", "7804")
