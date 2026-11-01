@@ -629,7 +629,9 @@ class AttendanceServerTests(unittest.TestCase):
         self.login_pin("administrador", "7804")
         response, active_result = self.request("/api/admin/active")
         self.assertEqual(response.status, 200)
-        self.assertNotIn("Operario 03", {worker["name"] for worker in active_result["workers"]})
+        unavailable_worker = next(worker for worker in active_result["workers"] if worker["name"] == "Operario 03")
+        self.assertEqual(unavailable_worker["location_source"], "unavailable")
+        self.assertIsNone(unavailable_worker["latitude"])
         self.opener = admin_opener
 
         imprecise_location = {
@@ -650,6 +652,89 @@ class AttendanceServerTests(unittest.TestCase):
         report_directory = server.DATABASE_PATH.parent / "control de fichaje"
         reports = list(report_directory.glob("*_control_de_fichaje_*.html"))
         self.assertTrue(any("Operario 03" in report.read_text(encoding="utf-8") for report in reports))
+
+    def test_live_location_tracking_updates_admin_map_only_during_active_shift(self):
+        with server.database() as connection:
+            worker_id = connection.execute(
+                "SELECT id FROM users WHERE display_name = 'Operario 04' AND role = 'worker'"
+            ).fetchone()["id"]
+            connection.execute("DELETE FROM attendance_events WHERE user_id = ?", (worker_id,))
+            connection.execute("DELETE FROM worker_locations WHERE user_id = ?", (worker_id,))
+
+        self.login_pin("Operario 04", "4104")
+        entry_location = {
+            "latitude": 40.4168,
+            "longitude": -3.7038,
+            "accuracy": 20,
+            "locationTimestamp": server.utc_now(),
+        }
+        response, start_result = self.request("/api/attendance/start", entry_location)
+        self.assertEqual(response.status, 201)
+        self.assertTrue(start_result["locationAvailable"])
+
+        admin_opener = build_opener(HTTPCookieProcessor(CookieJar()))
+        worker_opener = self.opener
+        self.opener = admin_opener
+        self.login_pin("administrador", "7804")
+        response, active_result = self.request("/api/admin/active")
+        self.assertEqual(response.status, 200)
+        worker = next(item for item in active_result["workers"] if item["name"] == "Operario 04")
+        self.assertEqual(worker["location_source"], "checkin")
+        self.assertEqual(worker["latitude"], entry_location["latitude"])
+
+        response, _ = self.request("/api/attendance/location", entry_location)
+        self.assertEqual(response.status, 403)
+        self.opener = worker_opener
+
+        live_location = {
+            "latitude": 40.4200,
+            "longitude": -3.7000,
+            "accuracy": 12,
+            "locationTimestamp": server.utc_now(),
+        }
+        response, update_result = self.request("/api/attendance/location", live_location)
+        self.assertEqual(response.status, 200)
+        self.assertTrue(update_result["ok"])
+        self.assertTrue(update_result["reportedAt"])
+
+        self.opener = admin_opener
+        response, active_result = self.request("/api/admin/active")
+        self.assertEqual(response.status, 200)
+        worker = next(item for item in active_result["workers"] if item["name"] == "Operario 04")
+        self.assertEqual(worker["location_source"], "live")
+        self.assertEqual(worker["latitude"], live_location["latitude"])
+        self.assertEqual(worker["longitude"], live_location["longitude"])
+        with server.database() as connection:
+            location_count = connection.execute(
+                "SELECT COUNT(*) FROM worker_locations WHERE user_id = ?",
+                (worker_id,),
+            ).fetchone()[0]
+        self.assertEqual(location_count, 1)
+
+        self.opener = worker_opener
+        response, _ = self.request("/api/logout", {}, method="POST")
+        self.assertEqual(response.status, 200)
+        self.opener = admin_opener
+        response, active_result = self.request("/api/admin/active")
+        self.assertEqual(response.status, 200)
+        worker = next(item for item in active_result["workers"] if item["name"] == "Operario 04")
+        self.assertEqual(worker["location_source"], "checkin")
+
+        self.opener = worker_opener
+        response, _ = self.request("/api/attendance/location", live_location)
+        self.assertEqual(response.status, 401)
+        self.login_pin("Operario 04", "4104")
+
+        response, _ = self.request("/api/attendance/stop", live_location)
+        self.assertEqual(response.status, 201)
+        response, _ = self.request("/api/attendance/location", live_location)
+        self.assertEqual(response.status, 409)
+        with server.database() as connection:
+            stored_location = connection.execute(
+                "SELECT user_id FROM worker_locations WHERE user_id = ?",
+                (worker_id,),
+            ).fetchone()
+        self.assertIsNone(stored_location)
 
     def test_monthly_finances_are_validated_and_saved_as_json(self):
         self.login_pin("administrador", "7804")

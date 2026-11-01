@@ -250,19 +250,19 @@
                     <section class="grid grid-cols-1 gap-6 xl:grid-cols-2">
                         <div class="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
                             <div class="flex items-center justify-between border-b border-gray-100 p-5">
-                                <div><h3 class="font-bold text-brandDark">Operarios activos hoy</h3><p class="text-sm text-gray-500">Selecciona un operario para centrar el mapa</p></div>
+                                <div><h3 class="font-bold text-brandDark">Operarios activos hoy</h3><p class="text-sm text-gray-500">La ubicación en vivo solo se actualiza mientras el fichaje está abierto y visible</p></div>
                                 <span id="active-worker-count" class="rounded-full bg-teal-50 px-3 py-1 text-sm font-semibold text-brandTeal">0 activos</span>
                             </div>
                             <div class="overflow-x-auto">
                                 <table class="w-full min-w-[560px] text-left text-sm">
-                                    <thead class="bg-gray-50 text-xs uppercase text-gray-500"><tr><th class="p-4">Operario</th><th class="p-4">Departamento</th><th class="p-4">Hora de entrada</th><th class="p-4">Precisión GPS</th></tr></thead>
+                                    <thead class="bg-gray-50 text-xs uppercase text-gray-500"><tr><th class="p-4">Operario</th><th class="p-4">Departamento</th><th class="p-4">Hora de entrada</th><th class="p-4">Ubicación GPS</th></tr></thead>
                                     <tbody id="active-workers-table" class="divide-y divide-gray-100"></tbody>
                                 </table>
                                 <p id="no-active-workers" class="p-6 text-center text-sm text-gray-500">No hay operarios en jornada.</p>
                             </div>
                         </div>
                         <div class="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-                            <div class="border-b border-gray-100 p-5"><h3 class="font-bold text-brandDark">Ubicación de los operarios</h3><p class="text-sm text-gray-500">Actualización automática cada 10 segundos</p></div>
+                            <div class="border-b border-gray-100 p-5"><h3 class="font-bold text-brandDark">Ubicación de los operarios</h3><p class="text-sm text-gray-500">El panel consulta cada 10 segundos; cada marcador se mueve al recibir una posición nueva</p></div>
                             <div id="attendance-map" class="z-0 w-full" aria-label="Mapa de ubicaciones de operarios"></div>
                             <div class="flex flex-wrap gap-x-5 gap-y-2 border-t border-gray-100 px-5 py-3 text-xs text-gray-600" aria-label="Leyenda de departamentos">
                                 <span class="inline-flex items-center gap-2"><span class="h-3 w-3 rounded-full border border-slate-600 bg-white"></span>Limpieza</span>
@@ -2639,9 +2639,10 @@
             workers.forEach(worker => {
                 currentIds.add(worker.id);
                 const row = document.createElement('tr');
-                row.className = 'cursor-pointer transition hover:bg-blue-50 focus-within:bg-blue-50';
-                row.tabIndex = 0;
-                row.setAttribute('aria-label', `Centrar mapa en ${worker.name}`);
+                const hasLocation = Number.isFinite(worker.latitude) && Number.isFinite(worker.longitude);
+                row.className = `${hasLocation ? 'cursor-pointer hover:bg-blue-50 focus-within:bg-blue-50' : ''} transition`;
+                row.tabIndex = hasLocation ? 0 : -1;
+                row.setAttribute('aria-label', hasLocation ? `Centrar mapa en ${worker.name}` : `${worker.name}, ubicación GPS no disponible`);
                 const nameCell = document.createElement('td');
                 nameCell.className = 'p-4 font-semibold text-brandDark';
                 nameCell.textContent = worker.name;
@@ -2653,10 +2654,21 @@
                 timeCell.textContent = new Date(worker.recorded_at).toLocaleTimeString('es-ES');
                 const accuracyCell = document.createElement('td');
                 accuracyCell.className = 'p-4 text-gray-600';
-                accuracyCell.textContent = `±${Math.round(worker.accuracy)} m`;
+                const locationLabels = {
+                    live: 'En vivo',
+                    checkin: 'Al fichar',
+                    stale: 'GPS desactualizado',
+                    unavailable: 'Sin GPS'
+                };
+                const locationLabel = locationLabels[worker.location_source] || 'Sin GPS';
+                const accuracy = Number.isFinite(worker.accuracy) ? ` · ±${Math.round(worker.accuracy)} m` : '';
+                const locationTime = worker.location_timestamp
+                    ? ` · ${new Date(worker.location_timestamp).toLocaleTimeString('es-ES')}`
+                    : '';
+                accuracyCell.textContent = `${locationLabel}${accuracy}${locationTime}`;
                 row.append(nameCell, departmentCell, timeCell, accuracyCell);
                 const focusWorker = () => {
-                    if (!attendanceMap) return;
+                    if (!attendanceMap || !hasLocation) return;
                     const position = [worker.latitude, worker.longitude];
                     attendanceMap.setView(position, 16);
                     const marker = attendanceMarkers.get(worker.id);
@@ -2677,7 +2689,7 @@
                         : '';
                     const markerStyle = attendanceMarkerStyles[departmentKey];
                     let marker = attendanceMarkers.get(worker.id);
-                    if (!markerStyle) {
+                    if (!markerStyle || !hasLocation) {
                         if (marker) {
                             marker.remove();
                             attendanceMarkers.delete(worker.id);
@@ -2697,7 +2709,7 @@
                         marker.setStyle(markerStyle);
                     }
                     const popup = document.createElement('strong');
-                    popup.textContent = worker.name;
+                    popup.textContent = `${worker.name} · ${locationLabel}${locationTime}`;
                     marker.bindPopup(popup);
                 }
             });

@@ -49,6 +49,7 @@ LOGIN_FAILURE_LIMIT = 5
 LOGIN_FAILURE_WINDOW = 15 * 60
 LOGIN_FAILURES = {}
 LOGIN_FAILURES_LOCK = threading.Lock()
+LIVE_LOCATION_MAX_AGE = timedelta(seconds=90)
 STARTER_DEPARTMENTS = (
     ("limpieza", 4101),
     ("conserjería", 5201),
@@ -492,6 +493,14 @@ def initialize_database():
                 location_available INTEGER NOT NULL DEFAULT 1 CHECK (location_available IN (0, 1)),
                 incident TEXT NOT NULL DEFAULT ''
             );
+            CREATE TABLE IF NOT EXISTS worker_locations (
+                user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+                latitude REAL NOT NULL CHECK (latitude BETWEEN -90 AND 90),
+                longitude REAL NOT NULL CHECK (longitude BETWEEN -180 AND 180),
+                accuracy REAL NOT NULL CHECK (accuracy >= 0),
+                location_timestamp TEXT NOT NULL,
+                reported_at TEXT NOT NULL
+            );
             CREATE INDEX IF NOT EXISTS attendance_user_time
                 ON attendance_events(user_id, recorded_at DESC);
             CREATE INDEX IF NOT EXISTS sessions_expiry ON sessions(expires_at);
@@ -635,6 +644,30 @@ def validate_ip_address(value):
         return str(ipaddress.ip_address(value.strip()))
     except ValueError:
         raise ValueError("Indica una dirección IPv4 o IPv6 válida.") from None
+
+
+def parse_location(payload):
+    if payload.get("locationAvailable") is False:
+        return None
+    try:
+        latitude = float(payload["latitude"])
+        longitude = float(payload["longitude"])
+        accuracy = float(payload["accuracy"])
+        location_timestamp = payload["locationTimestamp"]
+        if (
+            not all(map(math.isfinite, (latitude, longitude, accuracy)))
+            or not (-90 <= latitude <= 90 and -180 <= longitude <= 180)
+            or not (0 <= accuracy <= 10_000)
+            or not isinstance(location_timestamp, str)
+            or len(location_timestamp) > 64
+        ):
+            raise ValueError
+        parsed_timestamp = datetime.fromisoformat(location_timestamp.replace("Z", "+00:00"))
+        if parsed_timestamp.tzinfo is None:
+            raise ValueError
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return None
+    return latitude, longitude, accuracy, location_timestamp
 
 
 def seed_starter_users(connection):
@@ -992,17 +1025,43 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
         if path == "/api/admin/active":
             if not self.require_role("admin"):
                 return
+            live_location_cutoff = (datetime.now(timezone.utc) - LIVE_LOCATION_MAX_AGE).isoformat(timespec="milliseconds")
             with database() as connection:
                 rows = connection.execute(
                     """
                     SELECT u.id, u.display_name AS name,
                            COALESCE(e.department, u.department, 'Sin asignar') AS department,
                            e.recorded_at,
-                           e.latitude, e.longitude, e.accuracy
+                           CASE
+                               WHEN wl.user_id IS NOT NULL AND wl.reported_at >= ? THEN wl.latitude
+                               WHEN wl.user_id IS NULL AND e.location_available = 1 THEN e.latitude
+                               ELSE NULL
+                           END AS latitude,
+                           CASE
+                               WHEN wl.user_id IS NOT NULL AND wl.reported_at >= ? THEN wl.longitude
+                               WHEN wl.user_id IS NULL AND e.location_available = 1 THEN e.longitude
+                               ELSE NULL
+                           END AS longitude,
+                           CASE
+                               WHEN wl.user_id IS NOT NULL AND wl.reported_at >= ? THEN wl.accuracy
+                               WHEN wl.user_id IS NULL AND e.location_available = 1 THEN e.accuracy
+                               ELSE NULL
+                           END AS accuracy,
+                           CASE
+                               WHEN wl.user_id IS NOT NULL AND wl.reported_at >= ? THEN wl.location_timestamp
+                               WHEN wl.user_id IS NULL AND e.location_available = 1 THEN e.location_timestamp
+                               ELSE NULL
+                           END AS location_timestamp,
+                           CASE
+                               WHEN wl.user_id IS NOT NULL AND wl.reported_at >= ? THEN 'live'
+                               WHEN wl.user_id IS NOT NULL THEN 'stale'
+                               WHEN e.location_available = 1 THEN 'checkin'
+                               ELSE 'unavailable'
+                           END AS location_source
                     FROM attendance_events e
                     JOIN users u ON u.id = e.user_id
+                    LEFT JOIN worker_locations wl ON wl.user_id = u.id
                     WHERE e.event_type = 'start'
-                      AND e.location_available = 1
                       AND substr(e.recorded_at, 1, 10) = ?
                       AND e.id = (
                           SELECT latest.id FROM attendance_events latest
@@ -1011,7 +1070,14 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
                       )
                     ORDER BY e.recorded_at DESC
                     """,
-                    (utc_now()[:10],),
+                    (
+                        live_location_cutoff,
+                        live_location_cutoff,
+                        live_location_cutoff,
+                        live_location_cutoff,
+                        live_location_cutoff,
+                        utc_now()[:10],
+                    ),
                 ).fetchall()
             self.send_json(200, {"workers": [dict(row) for row in rows]})
             return
@@ -1389,6 +1455,15 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
             if morsel:
                 token_hash = hashlib.sha256(morsel.value.encode("utf-8")).hexdigest()
                 with database() as connection:
+                    session = connection.execute(
+                        "SELECT user_id FROM sessions WHERE token_hash = ?",
+                        (token_hash,),
+                    ).fetchone()
+                    if session:
+                        connection.execute(
+                            "DELETE FROM worker_locations WHERE user_id = ?",
+                            (session["user_id"],),
+                        )
                     connection.execute("DELETE FROM sessions WHERE token_hash = ?", (token_hash,))
             self.send_json(
                 200,
@@ -1461,35 +1536,67 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
             self.send_json(400, {"error": "La acción debe ser block o unblock."})
             return
 
+        if path == "/api/attendance/location":
+            user = self.require_role("worker")
+            if not user:
+                return
+            location = parse_location(payload)
+            if location is None:
+                self.send_json(400, {"error": "No se pudo validar la ubicación GPS."})
+                return
+            try:
+                with database() as connection:
+                    connection.execute("BEGIN IMMEDIATE")
+                    latest = connection.execute(
+                        """
+                        SELECT event_type FROM attendance_events
+                        WHERE user_id = ?
+                        ORDER BY recorded_at DESC, id DESC
+                        LIMIT 1
+                        """,
+                        (user["id"],),
+                    ).fetchone()
+                    if not latest or latest["event_type"] != "start":
+                        connection.execute(
+                            "DELETE FROM worker_locations WHERE user_id = ?",
+                            (user["id"],),
+                        )
+                        self.send_json(409, {"error": "El seguimiento GPS solo está disponible durante una jornada activa."})
+                        return
+                    reported_at = utc_now()
+                    connection.execute(
+                        """
+                        INSERT INTO worker_locations
+                            (user_id, latitude, longitude, accuracy, location_timestamp, reported_at)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                        ON CONFLICT(user_id) DO UPDATE SET
+                            latitude = excluded.latitude,
+                            longitude = excluded.longitude,
+                            accuracy = excluded.accuracy,
+                            location_timestamp = excluded.location_timestamp,
+                            reported_at = excluded.reported_at
+                        """,
+                        (user["id"], *location, reported_at),
+                    )
+            except sqlite3.Error:
+                self.send_json(500, {"error": "No se pudo actualizar la ubicación GPS."})
+                return
+            self.send_json(200, {"ok": True, "reportedAt": reported_at})
+            return
+
         if path in ("/api/attendance/start", "/api/attendance/stop"):
             user = self.require_role("worker")
             if not user:
                 return
-            location_available = payload.get("locationAvailable") is not False
-            if location_available:
-                try:
-                    latitude = float(payload["latitude"])
-                    longitude = float(payload["longitude"])
-                    accuracy = float(payload["accuracy"])
-                    location_timestamp = payload["locationTimestamp"]
-                    if (
-                        not all(map(math.isfinite, (latitude, longitude, accuracy)))
-                        or not (-90 <= latitude <= 90 and -180 <= longitude <= 180)
-                        or not (0 <= accuracy <= 10_000)
-                        or not isinstance(location_timestamp, str)
-                        or len(location_timestamp) > 64
-                    ):
-                        raise ValueError
-                    parsed_timestamp = datetime.fromisoformat(location_timestamp.replace("Z", "+00:00"))
-                    if parsed_timestamp.tzinfo is None:
-                        raise ValueError
-                except (KeyError, TypeError, ValueError, OverflowError):
-                    location_available = False
+            location = parse_location(payload)
+            location_available = location is not None
             if not location_available:
                 latitude = 0
                 longitude = 0
                 accuracy = 10_000
                 location_timestamp = ""
+            else:
+                latitude, longitude, accuracy, location_timestamp = location
 
             event_type = "start" if path.endswith("/start") else "stop"
             try:
@@ -1518,6 +1625,11 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
                             user["display_name"], user["department"] or "Sin asignar", int(location_available),
                         ),
                     )
+                    if event_type == "stop":
+                        connection.execute(
+                            "DELETE FROM worker_locations WHERE user_id = ?",
+                            (user["id"],),
+                        )
                     report = write_attendance_report(connection, user["id"])
             except OSError:
                 self.send_json(500, {"error": "No se pudo guardar el informe de fichaje; el fichaje no se registró."})

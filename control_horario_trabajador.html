@@ -44,8 +44,9 @@
             </div>
 
             <p id="notice" class="hidden rounded-xl p-4 text-sm" role="status" aria-live="polite"></p>
+            <p id="location-tracking-status" class="hidden rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900" role="status" aria-live="polite"></p>
             <p class="text-center text-xs leading-relaxed text-slate-500">
-                Para registrar cada fichaje se solicitará tu ubicación. Permite el acceso al GPS cuando el navegador lo indique.
+                Durante la jornada activa, el GPS actualizará tu ubicación mientras esta pantalla esté abierta y visible. Solo se conserva la posición más reciente; no se guarda un historial del recorrido. Puedes detener el seguimiento cerrando sesión o la jornada.
             </p>
 
             <section class="mt-auto">
@@ -61,6 +62,16 @@
         const startButton = document.getElementById('start-button');
         const stopButton = document.getElementById('stop-button');
         const notice = document.getElementById('notice');
+        const locationTrackingStatus = document.getElementById('location-tracking-status');
+        const LIVE_LOCATION_MIN_INTERVAL = 10000;
+        const LIVE_LOCATION_MIN_DISTANCE = 25;
+        let locationWatchId = null;
+        let latestPendingLocation = null;
+        let lastSubmittedLocation = null;
+        let lastLocationSubmissionAt = 0;
+        let locationSubmissionInFlight = false;
+        let locationSubmissionTimer = null;
+        let working = false;
 
         async function api(path, options = {}) {
             const response = await fetch(path, {
@@ -88,11 +99,12 @@
             });
         }
 
-        function setWorking(working, recordedAt = null, completedShift = null) {
-            startButton.disabled = working;
-            stopButton.disabled = !working;
-            document.getElementById('status').textContent = working ? 'Jornada en curso' : 'Fuera de jornada';
-            document.getElementById('status').className = `mt-1 font-semibold ${working ? 'text-emerald-700' : 'text-slate-700'}`;
+        function setWorking(isWorking, recordedAt = null, completedShift = null) {
+            working = isWorking;
+            startButton.disabled = isWorking;
+            stopButton.disabled = !isWorking;
+            document.getElementById('status').textContent = isWorking ? 'Jornada en curso' : 'Fuera de jornada';
+            document.getElementById('status').className = `mt-1 font-semibold ${isWorking ? 'text-emerald-700' : 'text-slate-700'}`;
             const lastCheckin = document.getElementById('last-checkin');
             if (completedShift && typeof completedShift === 'object') {
                 const startTime = formatDateTime(completedShift.startedAt);
@@ -184,6 +196,129 @@
             });
         }
 
+        function setLocationTrackingStatus(message, isError = false) {
+            locationTrackingStatus.textContent = message;
+            locationTrackingStatus.className = `rounded-xl border p-4 text-sm ${isError
+                ? 'border-amber-200 bg-amber-50 text-amber-900'
+                : 'border-blue-100 bg-blue-50 text-blue-900'}`;
+        }
+
+        function distanceBetweenLocations(first, second) {
+            const radians = degrees => degrees * Math.PI / 180;
+            const latitudeDifference = radians(second.latitude - first.latitude);
+            const longitudeDifference = radians(second.longitude - first.longitude);
+            const firstLatitude = radians(first.latitude);
+            const secondLatitude = radians(second.latitude);
+            const haversine = Math.sin(latitudeDifference / 2) ** 2
+                + Math.cos(firstLatitude) * Math.cos(secondLatitude)
+                * Math.sin(longitudeDifference / 2) ** 2;
+            return 6371000 * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+        }
+
+        async function sendPendingLocation() {
+            if (locationSubmissionInFlight || !latestPendingLocation) return;
+            const elapsed = Date.now() - lastLocationSubmissionAt;
+            const moved = lastSubmittedLocation
+                ? distanceBetweenLocations(lastSubmittedLocation, latestPendingLocation)
+                : Infinity;
+            const delay = LIVE_LOCATION_MIN_INTERVAL - elapsed;
+            if (lastSubmittedLocation && delay > 0 && moved < LIVE_LOCATION_MIN_DISTANCE) {
+                if (!locationSubmissionTimer) {
+                    locationSubmissionTimer = window.setTimeout(() => {
+                        locationSubmissionTimer = null;
+                        sendPendingLocation();
+                    }, delay);
+                }
+                return;
+            }
+
+            locationSubmissionInFlight = true;
+            const location = latestPendingLocation;
+            latestPendingLocation = null;
+            try {
+                await api('/api/attendance/location', {
+                    method: 'POST',
+                    body: JSON.stringify(location)
+                });
+                if (!working || document.visibilityState !== 'visible') return;
+                lastSubmittedLocation = location;
+                lastLocationSubmissionAt = Date.now();
+                setLocationTrackingStatus(
+                    `Seguimiento GPS activo. Última posición enviada: ${new Date(location.locationTimestamp).toLocaleTimeString('es-ES')} (precisión ±${Math.round(location.accuracy)} m).`
+                );
+            } catch (error) {
+                if (working && document.visibilityState === 'visible') {
+                    setLocationTrackingStatus(`No se pudo actualizar la ubicación: ${error.message}`, true);
+                }
+            } finally {
+                locationSubmissionInFlight = false;
+                if (working && latestPendingLocation) sendPendingLocation();
+            }
+        }
+
+        function stopLocationTracking(message = '') {
+            if (locationWatchId !== null && navigator.geolocation) {
+                navigator.geolocation.clearWatch(locationWatchId);
+                locationWatchId = null;
+            }
+            if (locationSubmissionTimer) {
+                window.clearTimeout(locationSubmissionTimer);
+                locationSubmissionTimer = null;
+            }
+            latestPendingLocation = null;
+            lastSubmittedLocation = null;
+            lastLocationSubmissionAt = 0;
+            if (message) setLocationTrackingStatus(message);
+        }
+
+        function startLocationTracking() {
+            if (!working || locationWatchId !== null) return;
+            if (document.visibilityState !== 'visible') {
+                setLocationTrackingStatus('Seguimiento GPS pausado mientras esta pantalla no está visible.');
+                return;
+            }
+            if (!navigator.geolocation) {
+                setLocationTrackingStatus('Este navegador no permite obtener ubicación GPS.', true);
+                return;
+            }
+
+            setLocationTrackingStatus('Solicitando ubicación GPS para el seguimiento de la jornada...');
+            try {
+                locationWatchId = navigator.geolocation.watchPosition(
+                    position => {
+                        const coords = position?.coords;
+                        if (
+                            !Number.isFinite(coords?.latitude)
+                            || !Number.isFinite(coords?.longitude)
+                            || !Number.isFinite(coords?.accuracy)
+                        ) {
+                            setLocationTrackingStatus('El dispositivo no proporcionó coordenadas GPS válidas.', true);
+                            return;
+                        }
+                        latestPendingLocation = {
+                            latitude: coords.latitude,
+                            longitude: coords.longitude,
+                            accuracy: coords.accuracy,
+                            locationTimestamp: new Date(position.timestamp || Date.now()).toISOString()
+                        };
+                        sendPendingLocation();
+                    },
+                    error => {
+                        const message = error.code === error.PERMISSION_DENIED
+                            ? 'Permite el acceso a la ubicación para compartir tu posición durante la jornada.'
+                            : error.code === error.TIMEOUT
+                                ? 'El GPS tarda en responder. Mantén esta pantalla abierta para volver a intentarlo.'
+                                : 'No se pudo obtener la ubicación GPS. Comprueba que esté activada en el dispositivo.';
+                        setLocationTrackingStatus(message, true);
+                    },
+                    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                );
+            } catch {
+                locationWatchId = null;
+                setLocationTrackingStatus('No se pudo iniciar el seguimiento GPS en este dispositivo.', true);
+            }
+        }
+
         async function recordAttendance(action) {
             const button = action === 'start' ? startButton : stopButton;
             button.disabled = true;
@@ -194,10 +329,15 @@
                     method: 'POST',
                     body: JSON.stringify(location)
                 });
+                setWorking(action === 'start', action === 'start' ? result?.recordedAt : null, result?.shift);
+                if (action === 'start') {
+                    startLocationTracking();
+                } else {
+                    stopLocationTracking('Seguimiento GPS detenido al finalizar la jornada.');
+                }
                 const locationNotice = result?.locationAvailable === false
                     ? ' La ubicación GPS no está disponible; se usó la hora del servidor.'
                     : '';
-                setWorking(action === 'start', action === 'start' ? result?.recordedAt : null, result?.shift);
                 if (action === 'stop') {
                     const shift = result?.shift && typeof result.shift === 'object' ? result.shift : null;
                     const date = typeof shift?.date === 'string' && shift.date
@@ -233,13 +373,28 @@
         startButton.addEventListener('click', () => recordAttendance('start'));
         stopButton.addEventListener('click', () => recordAttendance('stop'));
         document.getElementById('logout-button').addEventListener('click', async () => {
+            stopLocationTracking('Seguimiento GPS detenido al cerrar sesión.');
             try {
                 await api('/api/logout', { method: 'POST', body: '{}' });
                 window.location.replace('/');
             } catch (error) {
+                if (working) startLocationTracking();
                 showNotice(error.message, true);
             }
         });
+
+        document.addEventListener('visibilitychange', () => {
+            if (!working) return;
+            if (document.visibilityState === 'visible') {
+                startLocationTracking();
+            } else {
+                stopLocationTracking('Seguimiento GPS pausado mientras esta pantalla no está visible.');
+            }
+        });
+        window.addEventListener('pageshow', () => {
+            if (working && document.visibilityState === 'visible') startLocationTracking();
+        });
+        window.addEventListener('pagehide', () => stopLocationTracking());
 
         (async function initialize() {
             try {
@@ -254,6 +409,7 @@
                 const events = Array.isArray(attendance?.events) ? attendance.events : [];
                 const latestEntry = events.find(event => event?.event_type === 'start');
                 setWorking(Boolean(attendance?.active), attendance?.active && latestEntry ? latestEntry.recorded_at : null);
+                if (working) startLocationTracking();
                 renderHistory(events);
                 updateClock();
                 window.setInterval(updateClock, 1000);
