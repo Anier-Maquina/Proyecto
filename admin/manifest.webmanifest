@@ -1,0 +1,32 @@
+{
+  "id": "/admin/",
+  "name": "Grupo ADA - Panel de Administración",
+  "short_name": "Grupo ADA",
+  "description": "Panel privado de administración de Grupo ADA Servicios Integrales.",
+  "start_url": "/admin/dashboard.html",
+  "scope": "/admin/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F4F7F9",
+  "theme_color": "#1D5699",
+  "icons": [
+    {
+      "src": "/admin/icons/admin-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/admin/icons/admin-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/admin/icons/admin-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

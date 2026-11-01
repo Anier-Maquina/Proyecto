@@ -1,0 +1,5 @@
+/admin/service-worker.js
+  Cache-Control: no-cache
+
+/admin/manifest.webmanifest
+  Cache-Control: no-cache
