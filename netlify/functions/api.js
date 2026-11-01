@@ -108,7 +108,7 @@ export async function handler(event) {
         });
         const responseHeaders = {};
         for (const [name, value] of upstream.headers) {
-            if (!HOP_BY_HOP_HEADERS.has(name.toLowerCase())) {
+            if (!HOP_BY_HOP_HEADERS.has(name.toLowerCase()) && name.toLowerCase() !== "content-encoding") {
                 responseHeaders[name] = value;
             }
         }
