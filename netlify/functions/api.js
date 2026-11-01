@@ -1,5 +1,5 @@
-const BACKEND_ORIGIN = "https://proyecto-87t9.onrender.com";
 const FUNCTION_PATH = "/.netlify/functions/api";
+const DEFAULT_BACKEND_ORIGIN = "https://proyecto-87o9.onrender.com";
 const HOP_BY_HOP_HEADERS = new Set([
     "connection",
     "content-length",
@@ -62,7 +62,26 @@ export async function handler(event) {
         return jsonError(404, "Ruta de API no encontrada.");
     }
 
-    const backendUrl = new URL(apiPath, BACKEND_ORIGIN);
+    const backendOrigin = process.env.ATTENDANCE_API_ORIGIN || DEFAULT_BACKEND_ORIGIN;
+
+    let backendUrl;
+    try {
+        const origin = new URL(backendOrigin);
+        if (
+            !["http:", "https:"].includes(origin.protocol) ||
+            origin.username ||
+            origin.password ||
+            origin.pathname !== "/" ||
+            origin.search ||
+            origin.hash
+        ) {
+            throw new Error("ATTENDANCE_API_ORIGIN debe ser un origen HTTP(S) válido.");
+        }
+        backendUrl = new URL(apiPath, origin);
+    } catch (error) {
+        console.error("Configuración inválida de ATTENDANCE_API_ORIGIN:", error);
+        return jsonError(500, "La URL del backend de la API no es válida.");
+    }
     backendUrl.search = getSearchParams(event).toString();
 
     const requestHeaders = new Headers();
