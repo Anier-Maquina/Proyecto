@@ -497,6 +497,73 @@ class AttendanceServerTests(unittest.TestCase):
         )
         self.assertEqual(response.status, 400)
 
+    def test_job_applications_are_validated_admin_only_and_deletable(self):
+        cv_content = b"%PDF-1.4\ncandidate"
+        payload = {
+            "name": "Candidata Ejemplo",
+            "phone": "+34 600 123 456",
+            "email": "candidata@example.com",
+            "notes": "Disponibilidad inmediata",
+            "filename": "curriculum.pdf",
+            "content": base64.b64encode(cv_content).decode("ascii"),
+            "privacyConsent": True,
+            "website": "",
+        }
+        with server.JOB_APPLICATION_ATTEMPTS_LOCK:
+            server.JOB_APPLICATION_ATTEMPTS.pop("127.0.0.1", None)
+        response, result = self.request(
+            "/api/job-applications",
+            {**payload, "content": base64.b64encode(b"not a PDF").decode("ascii")},
+        )
+        self.assertEqual(response.status, 400)
+        self.assertIn("PDF válido", result["error"])
+
+        response, result = self.request("/api/job-applications", payload)
+        self.assertEqual(response.status, 201)
+        self.assertTrue(result["ok"])
+
+        response, _ = self.request("/api/admin/job-applications")
+        self.assertEqual(response.status, 401)
+
+        self.opener = build_opener(HTTPCookieProcessor(CookieJar()))
+        self.login_pin("Operario 02", "4102")
+        response, _ = self.request("/api/admin/job-applications")
+        self.assertEqual(response.status, 403)
+
+        self.opener = build_opener(HTTPCookieProcessor(CookieJar()))
+        self.login_pin("administrador", "7804")
+        response, listing = self.request("/api/admin/job-applications")
+        self.assertEqual(response.status, 200)
+        self.assertEqual(len(listing["applications"]), 1)
+        application = listing["applications"][0]
+        self.assertEqual(application["name"], payload["name"])
+        self.assertEqual(application["notes"], payload["notes"])
+        self.assertNotIn("cv_storage_name", application)
+
+        self.opener = build_opener(HTTPCookieProcessor(CookieJar()))
+        self.login_pin("Operario 02", "4102")
+        response, _ = self.request(f"/api/admin/job-applications/{application['id']}/cv")
+        self.assertEqual(response.status, 403)
+
+        self.opener = build_opener(HTTPCookieProcessor(CookieJar()))
+        self.login_pin("administrador", "7804")
+        response = self.opener.open(
+            f"{self.base_url}/api/admin/job-applications/{application['id']}/cv"
+        )
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.read(), cv_content)
+        self.assertEqual(response.headers.get_content_type(), "application/pdf")
+        response.close()
+
+        response, deleted = self.request(
+            f"/api/admin/job-applications/{application['id']}",
+            method="DELETE",
+        )
+        self.assertEqual(response.status, 200)
+        self.assertTrue(deleted["ok"])
+        response, listing = self.request("/api/admin/job-applications")
+        self.assertEqual(listing["applications"], [])
+
     def test_admin_account_locks_after_five_failures_and_manual_command_unlocks(self):
         self.login_pin("administrador", "7804")
         for attempt in range(server.LOGIN_FAILURE_LIMIT):

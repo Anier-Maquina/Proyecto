@@ -81,6 +81,8 @@ Sin `DATABASE_URL`, la base se crea en `Almacenamiento/control_horario.sqlite3`.
 
 La sección **Control mensual de gastos e ingresos** calcula los totales a medida que se introducen las cantidades y solo contacta con la API al pulsar **Guardar / Registrar mes**. El servidor valida y vuelve a calcular los totales y el beneficio, y guarda un registro JSON por mes en `Almacenamiento/control mensual de gastos e ingresos`; si el backend no está disponible, la interfaz conserva los datos y muestra un aviso discreto sin bloquearla. Los registros guardados también se muestran en **Archivo e Impresión**.
 
+La web pública incluye el formulario **Trabaja con Nosotros**, que envía los datos y el currículum PDF (máximo 4 MB) al backend. Las candidaturas se consultan en **Candidaturas**, debajo de **Bloqueo intentos fallidos**, y requieren sesión de administrador; desde allí se puede descargar el CV o eliminar la solicitud y su archivo. Los PDF se guardan fuera del sitio público en `solicitudes_empleo`, junto al archivo indicado por `ATTENDANCE_DATABASE` (por defecto, dentro de `Almacenamiento`), por lo que necesitan almacenamiento persistente en Render, incluso al usar PostgreSQL.
+
 ## Validación
 
 ```powershell

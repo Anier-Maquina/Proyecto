@@ -36,6 +36,9 @@ PBKDF2_ITERATIONS = 310_000
 COOKIE_NAME = "control_horario_session"
 MAX_REQUEST_BYTES = 16_384
 MAX_SIGNING_DOCUMENT_BYTES = 10 * 1024 * 1024
+MAX_JOB_APPLICATION_CV_BYTES = 4 * 1024 * 1024
+JOB_APPLICATION_LIMIT = 5
+JOB_APPLICATION_WINDOW = 15 * 60
 CORS_DEFAULT_ORIGINS = (
     "https://serviciosgrupoada.es",
     "https://www.serviciosgrupoada.es",
@@ -56,6 +59,8 @@ LOGIN_FAILURE_LIMIT = 5
 LOGIN_FAILURE_WINDOW = 15 * 60
 LOGIN_FAILURES = {}
 LOGIN_FAILURES_LOCK = threading.Lock()
+JOB_APPLICATION_ATTEMPTS = {}
+JOB_APPLICATION_ATTEMPTS_LOCK = threading.Lock()
 LIVE_LOCATION_MAX_AGE = timedelta(seconds=90)
 STARTER_DEPARTMENTS = (
     ("limpieza", 4101),
@@ -554,6 +559,20 @@ def initialize_database():
                 signed_by INTEGER REFERENCES users(id) ON DELETE SET NULL
             )
             """,
+            """
+            CREATE TABLE IF NOT EXISTS job_applications (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                phone TEXT NOT NULL,
+                email TEXT NOT NULL,
+                notes TEXT NOT NULL DEFAULT '',
+                cv_filename TEXT NOT NULL,
+                cv_storage_name TEXT NOT NULL UNIQUE,
+                cv_sha256 TEXT NOT NULL,
+                uploaded_at TEXT NOT NULL,
+                privacy_consent_at TEXT NOT NULL
+            )
+            """,
             f"""
             CREATE TABLE IF NOT EXISTS attendance_events (
                 id {id_primary_key},
@@ -795,6 +814,22 @@ def generate_available_worker_pin(connection):
     }
     available_pins = [f"{pin:04d}" for pin in range(10_000) if f"{pin:04d}" not in used_pins]
     return secrets.choice(available_pins) if available_pins else None
+
+
+def job_application_is_rate_limited(address):
+    now = time.time()
+    with JOB_APPLICATION_ATTEMPTS_LOCK:
+        recent = [
+            attempted_at
+            for attempted_at in JOB_APPLICATION_ATTEMPTS.get(address, [])
+            if now - attempted_at < JOB_APPLICATION_WINDOW
+        ]
+        if len(recent) >= JOB_APPLICATION_LIMIT:
+            JOB_APPLICATION_ATTEMPTS[address] = recent
+            return True
+        recent.append(now)
+        JOB_APPLICATION_ATTEMPTS[address] = recent
+        return False
 
 
 def parse_location(payload):
@@ -1059,6 +1094,49 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
             user = self.require_role("worker")
             if user:
                 self.send_json(200, {"user": user})
+            return
+        if path == "/api/admin/job-applications":
+            if not self.require_role("admin"):
+                return
+            try:
+                with database() as connection:
+                    rows = connection.execute(
+                        """
+                        SELECT id, name, phone, email, notes, cv_filename, uploaded_at
+                        FROM job_applications
+                        ORDER BY uploaded_at DESC
+                        """
+                    ).fetchall()
+            except DATABASE_ERRORS:
+                self.send_json(500, {"error": "No se pudieron cargar las solicitudes de empleo."})
+                return
+            self.send_json(200, {"applications": [dict(row) for row in rows]})
+            return
+        application_cv_match = re.fullmatch(
+            r"/api/admin/job-applications/([a-f0-9]{32})/cv",
+            path,
+        )
+        if application_cv_match:
+            if not self.require_role("admin"):
+                return
+            try:
+                with database() as connection:
+                    row = connection.execute(
+                        "SELECT cv_filename, cv_storage_name FROM job_applications WHERE id = ?",
+                        (application_cv_match.group(1),),
+                    ).fetchone()
+                if not row:
+                    self.send_json(404, {"error": "No se encontró la solicitud de empleo."})
+                    return
+                file_path = DATABASE_PATH.parent / "solicitudes_empleo" / row["cv_storage_name"]
+                content = file_path.read_bytes()
+            except OSError:
+                self.send_json(500, {"error": "No se pudo leer el currículum."})
+                return
+            except DATABASE_ERRORS:
+                self.send_json(500, {"error": "No se pudo consultar el currículum."})
+                return
+            self.send_file(200, content, "application/pdf", row["cv_filename"])
             return
         if path == "/api/admin/signing/documents":
             if not self.require_role("admin"):
@@ -1331,6 +1409,34 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
     def do_HEAD(self):
         self.send_error(405, "Método no permitido.")
 
+    def do_DELETE(self):
+        path = urlparse(self.path).path
+        match = re.fullmatch(r"/api/admin/job-applications/([a-f0-9]{32})", path)
+        if not match:
+            self.send_json(404, {"error": "Ruta no encontrada."})
+            return
+        if not self.require_role("admin"):
+            return
+        try:
+            with database() as connection:
+                row = connection.execute(
+                    "SELECT cv_storage_name FROM job_applications WHERE id = ?",
+                    (match.group(1),),
+                ).fetchone()
+                if not row:
+                    self.send_json(404, {"error": "No se encontró la solicitud de empleo."})
+                    return
+                connection.execute("DELETE FROM job_applications WHERE id = ?", (match.group(1),))
+            file_path = DATABASE_PATH.parent / "solicitudes_empleo" / row["cv_storage_name"]
+            file_path.unlink(missing_ok=True)
+        except DATABASE_ERRORS:
+            self.send_json(500, {"error": "No se pudo eliminar la solicitud de empleo."})
+            return
+        except OSError:
+            self.send_json(500, {"error": "La solicitud se eliminó, pero no se pudo borrar su archivo."})
+            return
+        self.send_json(200, {"ok": True})
+
     def do_PUT(self):
         path = urlparse(self.path).path
         attendance_match = re.fullmatch(r"/api/admin/attendance-reports/(\d+)", path)
@@ -1466,11 +1572,106 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
             max_bytes = (
                 (MAX_SIGNING_DOCUMENT_BYTES * 4 // 3) + 16_384
                 if path == "/api/admin/signing/documents"
+                else (MAX_JOB_APPLICATION_CV_BYTES * 4 // 3) + 32_768
+                if path == "/api/job-applications"
                 else MAX_REQUEST_BYTES
             )
             payload = self.read_json(max_bytes=max_bytes)
         except ValueError as error:
             self.send_json(400, {"error": str(error)})
+            return
+
+        if path == "/api/job-applications":
+            if payload.get("website"):
+                self.send_json(201, {"ok": True})
+                return
+            if job_application_is_rate_limited(self.client_address[0]):
+                self.send_json(429, {"error": "Se han recibido demasiadas solicitudes desde esta conexión. Inténtalo más tarde."})
+                return
+
+            name = payload.get("name")
+            phone = payload.get("phone")
+            email = payload.get("email")
+            notes = payload.get("notes", "")
+            filename = payload.get("filename")
+            content_base64 = payload.get("content")
+            consent = payload.get("privacyConsent")
+            if (
+                not isinstance(name, str)
+                or not name.strip()
+                or len(name.strip()) > 120
+                or not isinstance(phone, str)
+                or not re.fullmatch(r"[0-9+().\-\s]{6,30}", phone.strip())
+                or not isinstance(email, str)
+                or len(email.strip()) > 254
+                or not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email.strip())
+                or not isinstance(notes, str)
+                or len(notes.strip()) > 2000
+                or consent is not True
+            ):
+                self.send_json(400, {"error": "Revisa el nombre, teléfono, correo y consentimiento de privacidad."})
+                return
+            if (
+                not isinstance(filename, str)
+                or not filename.strip()
+                or len(filename) > 255
+                or not isinstance(content_base64, str)
+            ):
+                self.send_json(400, {"error": "Adjunta el currículum en formato PDF."})
+                return
+            filename = re.split(r"[\\/]", filename.strip())[-1]
+            if not filename.lower().endswith(".pdf"):
+                self.send_json(400, {"error": "El currículum debe ser un archivo PDF."})
+                return
+            try:
+                content = base64.b64decode(content_base64, validate=True)
+            except (ValueError, base64.binascii.Error):
+                self.send_json(400, {"error": "El contenido del currículum no es válido."})
+                return
+            if not content or len(content) > MAX_JOB_APPLICATION_CV_BYTES:
+                self.send_json(413, {"error": "El currículum debe ocupar como máximo 4 MB."})
+                return
+            if not content.startswith(b"%PDF-"):
+                self.send_json(400, {"error": "El archivo adjunto no parece ser un PDF válido."})
+                return
+
+            application_id = secrets.token_hex(16)
+            storage_name = f"{application_id}.pdf"
+            file_path = DATABASE_PATH.parent / "solicitudes_empleo" / storage_name
+            uploaded_at = utc_now()
+            try:
+                file_path.parent.mkdir(parents=True, exist_ok=True)
+                file_path.write_bytes(content)
+                with database() as connection:
+                    connection.execute(
+                        """
+                        INSERT INTO job_applications
+                            (id, name, phone, email, notes, cv_filename, cv_storage_name,
+                             cv_sha256, uploaded_at, privacy_consent_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            application_id,
+                            name.strip(),
+                            phone.strip(),
+                            email.strip().lower(),
+                            notes.strip(),
+                            filename,
+                            storage_name,
+                            hashlib.sha256(content).hexdigest(),
+                            uploaded_at,
+                            uploaded_at,
+                        ),
+                    )
+            except DATABASE_ERRORS:
+                file_path.unlink(missing_ok=True)
+                self.send_json(500, {"error": "No se pudo guardar la solicitud. Inténtalo de nuevo."})
+                return
+            except OSError:
+                file_path.unlink(missing_ok=True)
+                self.send_json(500, {"error": "No se pudo guardar el currículum. Inténtalo de nuevo."})
+                return
+            self.send_json(201, {"ok": True, "message": "Solicitud enviada correctamente."})
             return
 
         if path == "/api/admin/workers":

@@ -478,6 +478,50 @@
         </div>
     </section>
 
+    <section id="trabaja" class="bg-white py-20">
+        <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+            <div class="mb-10 text-center">
+                <span class="rounded-full bg-ada-100 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-ada-700">Únete al equipo</span>
+                <h2 class="mt-4 text-3xl font-extrabold tracking-tight text-slate-900">Trabaja con Nosotros</h2>
+                <p class="mt-3 text-slate-600">Déjanos tus datos y adjunta tu currículum. El equipo de selección recibirá tu solicitud de forma privada.</p>
+            </div>
+            <form id="job-application-form" class="space-y-5 rounded-3xl border border-slate-100 bg-slate-50 p-6 shadow-sm sm:p-8">
+                <div id="job-application-status" class="hidden rounded-xl p-4 text-sm" role="status" aria-live="polite"></div>
+                <label class="hidden" aria-hidden="true">No rellenar<input id="job-application-website" type="text" tabindex="-1" autocomplete="off"></label>
+                <div>
+                    <label for="job-application-name" class="mb-2 block text-sm font-semibold text-slate-700">Nombre completo *</label>
+                    <input id="job-application-name" type="text" maxlength="120" autocomplete="name" required class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ada-500">
+                </div>
+                <div class="grid gap-5 sm:grid-cols-2">
+                    <div>
+                        <label for="job-application-phone" class="mb-2 block text-sm font-semibold text-slate-700">Teléfono *</label>
+                        <input id="job-application-phone" type="tel" maxlength="30" autocomplete="tel" required class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ada-500">
+                    </div>
+                    <div>
+                        <label for="job-application-email" class="mb-2 block text-sm font-semibold text-slate-700">Correo electrónico *</label>
+                        <input id="job-application-email" type="email" maxlength="254" autocomplete="email" required class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ada-500">
+                    </div>
+                </div>
+                <div>
+                    <label for="job-application-cv" class="mb-2 block text-sm font-semibold text-slate-700">Currículum (PDF, máximo 4 MB) *</label>
+                    <input id="job-application-cv" type="file" accept=".pdf,application/pdf" required class="block w-full rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-ada-50 file:px-4 file:py-2 file:font-semibold file:text-ada-700">
+                </div>
+                <div>
+                    <label for="job-application-notes" class="mb-2 block text-sm font-semibold text-slate-700">Información adicional (opcional)</label>
+                    <textarea id="job-application-notes" rows="4" maxlength="2000" placeholder="Cuéntanos algo más sobre ti o tu disponibilidad." class="w-full resize-y rounded-xl border border-slate-200 bg-white px-4 py-3 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ada-500"></textarea>
+                </div>
+                <label class="flex items-start gap-3 text-sm text-slate-600">
+                    <input id="job-application-consent" type="checkbox" required class="mt-1 h-4 w-4 rounded border-slate-300 text-ada-600 focus:ring-ada-500">
+                    <span>Consiento que Grupo ADA trate estos datos y mi currículum para valorar mi candidatura y ponerse en contacto conmigo. *</span>
+                </label>
+                <button id="job-application-submit" type="submit" class="flex w-full items-center justify-center gap-2 rounded-xl bg-ada-600 px-5 py-4 font-semibold text-white shadow-lg transition hover:bg-ada-700 disabled:cursor-wait disabled:opacity-60">
+                    <i class="fa-solid fa-paper-plane"></i>
+                    Enviar candidatura
+                </button>
+            </form>
+        </div>
+    </section>
+
     <!-- Footer -->
     <footer class="bg-slate-900 text-white pt-16 pb-12 border-t border-slate-800">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -519,6 +563,10 @@
                             <a href="mailto:info@serviciosgrupoada.es" class="hover:text-white transition-colors font-medium">info@serviciosgrupoada.es</a>
                         </li>
                     </ul>
+                    <a href="#trabaja" class="inline-flex items-center gap-2 rounded-xl bg-ada-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-ada-700">
+                        <i class="fa-solid fa-briefcase"></i>
+                        Trabaja con Nosotros
+                    </a>
                 </div>
             </div>
 
@@ -569,6 +617,69 @@
             setTimeout(() => {
                 successAlert.classList.add('hidden');
             }, 6000);
+        });
+
+        const jobApplicationForm = document.getElementById('job-application-form');
+        const jobApplicationStatus = document.getElementById('job-application-status');
+        const jobApplicationSubmit = document.getElementById('job-application-submit');
+
+        jobApplicationForm.addEventListener('submit', async event => {
+            event.preventDefault();
+            const file = document.getElementById('job-application-cv').files[0];
+            const status = (message, isError = false) => {
+                jobApplicationStatus.textContent = message;
+                jobApplicationStatus.className = `rounded-xl p-4 text-sm ${isError ? 'bg-red-50 text-red-700' : 'bg-ada-50 text-ada-800'}`;
+                jobApplicationStatus.classList.remove('hidden');
+            };
+            if (!file || !file.name.toLowerCase().endsWith('.pdf')) {
+                status('Adjunta tu currículum en formato PDF.', true);
+                return;
+            }
+            if (file.size === 0 || file.size > 4 * 1024 * 1024) {
+                status('El currículum debe ocupar como máximo 4 MB.', true);
+                return;
+            }
+
+            jobApplicationSubmit.disabled = true;
+            status('Enviando tu candidatura...');
+            try {
+                const content = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        if (typeof reader.result !== 'string') {
+                            reject(new Error('No se pudo leer el currículum.'));
+                            return;
+                        }
+                        resolve(reader.result.split(',')[1] || '');
+                    };
+                    reader.onerror = () => reject(new Error('No se pudo leer el currículum.'));
+                    reader.readAsDataURL(file);
+                });
+                const response = await fetch('/api/job-applications', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({
+                        name: document.getElementById('job-application-name').value.trim(),
+                        phone: document.getElementById('job-application-phone').value.trim(),
+                        email: document.getElementById('job-application-email').value.trim(),
+                        notes: document.getElementById('job-application-notes').value.trim(),
+                        filename: file.name,
+                        content,
+                        privacyConsent: document.getElementById('job-application-consent').checked,
+                        website: document.getElementById('job-application-website').value
+                    })
+                });
+                const result = await response.json().catch(() => null);
+                if (!response.ok) {
+                    throw new Error(result?.error || `No se pudo enviar la candidatura (HTTP ${response.status}).`);
+                }
+                jobApplicationForm.reset();
+                status('Candidatura enviada correctamente. Hemos recibido tus datos y el currículum.');
+            } catch (error) {
+                status(error instanceof Error ? error.message : 'No se pudo enviar la candidatura. Comprueba tu conexión e inténtalo de nuevo.', true);
+            } finally {
+                jobApplicationSubmit.disabled = false;
+            }
         });
     </script>
 </body>

@@ -301,6 +301,7 @@
                 <a href="#" onclick="switchTab('tasks')" id="nav-tasks" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition-all"><span>📅 Tareas y Calendario</span></a>
                 <a href="#" onclick="switchTab('monthly-finances')" id="nav-monthly-finances" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition-all"><span>💰 Control mensual de gastos e ingresos</span></a>
                 <a href="#" onclick="switchTab('security')" id="nav-security" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition-all"><span>🔒 Bloqueo intentos fallidos</span></a>
+                <a href="#" onclick="switchTab('job-applications')" id="nav-job-applications" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition-all"><span>📄 Candidaturas</span></a>
             </nav>
             <div class="p-4 border-t border-gray-700 bg-gray-900/50">
                 <div class="flex items-center space-x-3">
@@ -455,12 +456,11 @@
                         </div>
                         <div id="structure-worker-results" class="mt-4 space-y-4" aria-live="polite"></div>
                     </section>
-                    <section class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6" aria-labelledby="general-management-heading">
-                        <p class="text-xs font-semibold uppercase tracking-wider text-brandBlue">Nivel directivo</p>
-                        <h4 id="general-management-heading" class="text-xl font-bold text-brandDark mt-1">Dirección General</h4>
-                        <p class="text-sm text-gray-500 mt-1">Dirección y coordinación general de la empresa</p>
-                        <div class="h-8 w-px bg-gray-200 ml-6" aria-hidden="true"></div>
-                        <div id="department-list" class="grid grid-cols-1 xl:grid-cols-2 gap-5"></div>
+                    <section class="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm" aria-labelledby="organization-departments-heading">
+                        <h4 id="organization-departments-heading" class="font-bold text-brandDark">Departamentos</h4>
+                        <p class="mt-1 text-sm text-gray-500">Selecciona un departamento y después un trabajador para consultar y editar su ficha.</p>
+                        <div id="organization-department-buttons" class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3"></div>
+                        <div id="department-list" class="mt-5"></div>
                     </section>
                 </div>
 
@@ -645,6 +645,27 @@
                                 <p id="admin-blocked-ips-empty" class="hidden py-4 text-sm text-gray-500">No hay direcciones IP bloqueadas.</p>
                             </div>
                         </div>
+                    </section>
+                </div>
+                <div id="tab-job-applications" class="tab-content hidden space-y-6">
+                    <section class="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+                        <div class="flex flex-col gap-3 border-b border-gray-100 p-6 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <h3 class="text-lg font-bold text-brandDark">Candidaturas recibidas</h3>
+                                <p class="mt-1 text-sm text-gray-500">Datos y currículums enviados desde la web pública. Solo administración puede consultarlos.</p>
+                            </div>
+                            <button id="job-applications-refresh" type="button" class="rounded-xl border border-brandBlue px-4 py-2 text-sm font-semibold text-brandBlue hover:bg-blue-50">Actualizar</button>
+                        </div>
+                        <p id="job-applications-status" class="hidden p-4 text-sm" role="status" aria-live="polite"></p>
+                        <div class="overflow-x-auto">
+                            <table class="w-full min-w-[900px] text-left text-sm">
+                                <thead class="bg-gray-50 text-xs uppercase text-gray-500">
+                                    <tr><th class="p-4">Fecha</th><th class="p-4">Nombre</th><th class="p-4">Teléfono</th><th class="p-4">Correo</th><th class="p-4">Información adicional</th><th class="p-4">Currículum</th><th class="p-4">Acción</th></tr>
+                                </thead>
+                                <tbody id="job-applications-table" class="divide-y divide-gray-100"></tbody>
+                            </table>
+                        </div>
+                        <p id="job-applications-empty" class="hidden p-6 text-center text-sm text-gray-500">Aún no se han recibido candidaturas.</p>
                     </section>
                 </div>
             </main>
@@ -849,6 +870,7 @@
         let nextTaskId = 1;
         let selectedWorkerId = null;
         let editingWorkerId = null;
+        let selectedOrganizationDepartment = null;
         let editingInventoryItemId = null;
         let editingInventoryLocationId = null;
         let currentCalendarDate = new Date();
@@ -918,6 +940,7 @@
             if (tabId === 'archive') renderArchive();
             if (tabId === 'tasks') renderCalendar();
             if (tabId === 'security') loadAdminSecurityEvents();
+            if (tabId === 'job-applications') loadJobApplications();
             if (tabId === 'signing') loadSigningDocuments();
             setAdminMobileMenuOpen(false);
         }
@@ -1104,38 +1127,66 @@
         }
 
         function renderOrganization() {
-            const container = document.getElementById('department-list');
-            container.replaceChildren();
-            const organizationDepartments = [...new Set([...departments, ...workers.map(worker => worker.department).filter(Boolean)])];
+            const buttons = document.getElementById('organization-department-buttons');
+            const list = document.getElementById('department-list');
+            if (!buttons || !list) return;
+            buttons.replaceChildren();
+            list.replaceChildren();
+            const organizationDepartments = [
+                { name: 'limpieza', label: 'Limpieza', className: 'border-slate-300 bg-white text-slate-800 hover:bg-slate-50' },
+                { name: 'conserjería', label: 'Conserjería', className: 'border-blue-700 bg-blue-600 text-white hover:bg-blue-700' },
+                { name: 'jardinería', label: 'Jardinería', className: 'border-green-700 bg-green-600 text-white hover:bg-green-700' }
+            ];
             organizationDepartments.forEach(department => {
-                const departmentWorkers = workers.filter(worker => worker.department === department);
-                const section = document.createElement('section');
-                section.className = 'rounded-2xl border border-gray-200 bg-brandLight/50 p-5';
-
-                const heading = document.createElement('div');
-                heading.className = 'flex items-center justify-between gap-3 border-b border-gray-200 pb-3';
-                const title = document.createElement('h5');
-                title.className = 'font-bold text-brandDark';
-                title.textContent = department;
-                const count = document.createElement('span');
-                count.className = 'rounded-full bg-brandBlue/10 px-3 py-1 text-xs font-semibold text-brandBlue';
-                count.textContent = `${departmentWorkers.length} ${departmentWorkers.length === 1 ? 'trabajador' : 'trabajadores'}`;
-                heading.append(title, count);
-
-                const team = document.createElement('div');
-                team.className = 'mt-3 space-y-3';
-                if (departmentWorkers.length === 0 && workers.length === 0) {
-                    const empty = document.createElement('p');
-                    empty.className = 'py-3 text-sm text-gray-500';
-                    empty.textContent = 'Cargando trabajadores...';
-                    team.appendChild(empty);
-                } else if (departmentWorkers.length === 0) {
-                    section.classList.add('hidden');
-                }
-                departmentWorkers.forEach(worker => team.appendChild(createWorkerCard(worker)));
-                section.append(heading, team);
-                container.appendChild(section);
+                const departmentWorkers = workers.filter(worker => normalizeSearchText(worker.department) === normalizeSearchText(department.name));
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = `rounded-xl border px-4 py-3 text-sm font-semibold shadow-sm transition ${department.className}`;
+                button.textContent = `${department.label} · ${departmentWorkers.length}`;
+                button.setAttribute('aria-pressed', String(selectedOrganizationDepartment === department.name));
+                if (selectedOrganizationDepartment === department.name) button.classList.add('ring-2', 'ring-brandTeal', 'ring-offset-2');
+                button.addEventListener('click', () => {
+                    selectedOrganizationDepartment = selectedOrganizationDepartment === department.name ? null : department.name;
+                    renderOrganization();
+                });
+                buttons.appendChild(button);
             });
+
+            if (selectedOrganizationDepartment) {
+                const department = organizationDepartments.find(item => item.name === selectedOrganizationDepartment);
+                const departmentWorkers = workers.filter(worker => normalizeSearchText(worker.department) === normalizeSearchText(selectedOrganizationDepartment));
+                const heading = document.createElement('h5');
+                heading.className = 'mb-3 font-semibold text-brandDark';
+                heading.textContent = `${department?.label || selectedOrganizationDepartment} · Trabajadores`;
+                list.appendChild(heading);
+                if (departmentWorkers.length === 0) {
+                    const empty = document.createElement('p');
+                    empty.className = 'rounded-lg bg-gray-50 p-4 text-sm text-gray-500';
+                    empty.textContent = 'No hay trabajadores asignados a este departamento.';
+                    list.appendChild(empty);
+                } else {
+                    const workerList = document.createElement('div');
+                    workerList.className = 'flex flex-wrap gap-2';
+                    departmentWorkers.forEach(worker => {
+                        const workerButton = document.createElement('button');
+                        workerButton.type = 'button';
+                        workerButton.className = 'rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-brandBlue hover:border-brandBlue hover:bg-blue-50';
+                        workerButton.textContent = worker.name;
+                        workerButton.addEventListener('click', () => {
+                            document.getElementById('structure-worker-search').value = worker.name;
+                            renderWorkerSearchResults();
+                            document.getElementById('structure-worker-search').focus();
+                        });
+                        workerList.appendChild(workerButton);
+                    });
+                    list.appendChild(workerList);
+                }
+            } else {
+                const prompt = document.createElement('p');
+                prompt.className = 'rounded-lg bg-gray-50 p-4 text-sm text-gray-500';
+                prompt.textContent = 'Selecciona un departamento para ver sus trabajadores.';
+                list.appendChild(prompt);
+            }
             document.getElementById('stat-workers').textContent = String(workers.length);
         }
 
@@ -2866,6 +2917,75 @@
             });
             document.getElementById('admin-security-refresh').addEventListener('click', loadAdminSecurityEvents);
         }
+
+        function setJobApplicationsStatus(message, isError = false) {
+            const status = document.getElementById('job-applications-status');
+            status.textContent = message;
+            status.className = `p-4 text-sm ${isError ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`;
+        }
+
+        async function loadJobApplications() {
+            const table = document.getElementById('job-applications-table');
+            const empty = document.getElementById('job-applications-empty');
+            const status = document.getElementById('job-applications-status');
+            table.replaceChildren();
+            empty.classList.add('hidden');
+            status.classList.add('hidden');
+            try {
+                const { applications } = await requestApi('/api/admin/job-applications');
+                applications.forEach(application => {
+                    const row = document.createElement('tr');
+                    const date = new Date(application.uploaded_at);
+                    const dateText = Number.isNaN(date.getTime()) ? application.uploaded_at : date.toLocaleString('es-ES');
+                    [dateText, application.name, application.phone, application.email, application.notes || '—'].forEach(value => {
+                        const cell = document.createElement('td');
+                        cell.className = 'p-4 align-top text-gray-700';
+                        cell.textContent = value;
+                        row.appendChild(cell);
+                    });
+                    const cvCell = document.createElement('td');
+                    cvCell.className = 'p-4 align-top';
+                    const cvLink = document.createElement('a');
+                    cvLink.href = `/api/admin/job-applications/${encodeURIComponent(application.id)}/cv`;
+                    cvLink.target = '_blank';
+                    cvLink.rel = 'noopener';
+                    cvLink.className = 'font-semibold text-brandBlue hover:underline';
+                    cvLink.textContent = application.cv_filename;
+                    cvLink.setAttribute('aria-label', `Descargar currículum de ${application.name}`);
+                    cvCell.appendChild(cvLink);
+                    row.appendChild(cvCell);
+
+                    const actionCell = document.createElement('td');
+                    actionCell.className = 'p-4 align-top';
+                    const deleteButton = document.createElement('button');
+                    deleteButton.type = 'button';
+                    deleteButton.className = 'font-semibold text-red-600 hover:underline';
+                    deleteButton.textContent = 'Eliminar';
+                    deleteButton.setAttribute('aria-label', `Eliminar candidatura de ${application.name}`);
+                    deleteButton.addEventListener('click', async () => {
+                        if (!window.confirm(`¿Eliminar la candidatura de ${application.name} y su currículum?`)) return;
+                        deleteButton.disabled = true;
+                        try {
+                            await requestApi(`/api/admin/job-applications/${encodeURIComponent(application.id)}`, { method: 'DELETE' });
+                            row.remove();
+                            empty.classList.toggle('hidden', table.children.length > 0);
+                            setJobApplicationsStatus('Candidatura y currículum eliminados.');
+                        } catch (error) {
+                            setJobApplicationsStatus(error instanceof Error ? error.message : 'No se pudo eliminar la candidatura.', true);
+                            deleteButton.disabled = false;
+                        }
+                    });
+                    actionCell.appendChild(deleteButton);
+                    row.appendChild(actionCell);
+                    table.appendChild(row);
+                });
+                empty.classList.toggle('hidden', applications.length > 0);
+            } catch (error) {
+                setJobApplicationsStatus(error instanceof Error ? error.message : 'No se pudieron cargar las candidaturas.', true);
+            }
+        }
+
+        document.getElementById('job-applications-refresh').addEventListener('click', loadJobApplications);
 
         function initializeFinanceControls() {
             const now = new Date();
