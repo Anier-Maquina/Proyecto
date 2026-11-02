@@ -61,6 +61,8 @@ LOGIN_FAILURES = {}
 LOGIN_FAILURES_LOCK = threading.Lock()
 JOB_APPLICATION_ATTEMPTS = {}
 JOB_APPLICATION_ATTEMPTS_LOCK = threading.Lock()
+QUOTE_REQUEST_ATTEMPTS = {}
+QUOTE_REQUEST_ATTEMPTS_LOCK = threading.Lock()
 LIVE_LOCATION_MAX_AGE = timedelta(seconds=90)
 STARTER_DEPARTMENTS = (
     ("limpieza", 4101),
@@ -573,6 +575,27 @@ def initialize_database():
                 privacy_consent_at TEXT NOT NULL
             )
             """,
+            """
+            CREATE TABLE IF NOT EXISTS clients (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                contact TEXT NOT NULL,
+                address TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS quote_requests (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                phone TEXT NOT NULL,
+                email TEXT NOT NULL,
+                service TEXT NOT NULL,
+                message TEXT NOT NULL,
+                address TEXT NOT NULL,
+                submitted_at TEXT NOT NULL
+            )
+            """,
             f"""
             CREATE TABLE IF NOT EXISTS attendance_events (
                 id {id_primary_key},
@@ -829,6 +852,22 @@ def job_application_is_rate_limited(address):
             return True
         recent.append(now)
         JOB_APPLICATION_ATTEMPTS[address] = recent
+        return False
+
+
+def quote_request_is_rate_limited(address):
+    now = time.time()
+    with QUOTE_REQUEST_ATTEMPTS_LOCK:
+        recent = [
+            attempted_at
+            for attempted_at in QUOTE_REQUEST_ATTEMPTS.get(address, [])
+            if now - attempted_at < JOB_APPLICATION_WINDOW
+        ]
+        if len(recent) >= JOB_APPLICATION_LIMIT:
+            QUOTE_REQUEST_ATTEMPTS[address] = recent
+            return True
+        recent.append(now)
+        QUOTE_REQUEST_ATTEMPTS[address] = recent
         return False
 
 
@@ -1095,6 +1134,35 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
             if user:
                 self.send_json(200, {"user": user})
             return
+        if path == "/api/admin/clients":
+            if not self.require_role("admin"):
+                return
+            try:
+                with database() as connection:
+                    rows = connection.execute(
+                        "SELECT id, name, contact, address, created_at FROM clients ORDER BY LOWER(name), created_at DESC"
+                    ).fetchall()
+            except DATABASE_ERRORS:
+                self.send_json(500, {"error": "No se pudieron cargar los clientes."})
+                return
+            self.send_json(200, {"clients": [dict(row) for row in rows]})
+            return
+        if path == "/api/admin/quote-requests":
+            if not self.require_role("admin"):
+                return
+            try:
+                with database() as connection:
+                    rows = connection.execute(
+                        """
+                        SELECT id, name, phone, email, service, message, address, submitted_at
+                        FROM quote_requests ORDER BY submitted_at DESC
+                        """
+                    ).fetchall()
+            except DATABASE_ERRORS:
+                self.send_json(500, {"error": "No se pudieron cargar las solicitudes de presupuesto."})
+                return
+            self.send_json(200, {"requests": [dict(row) for row in rows]})
+            return
         if path == "/api/admin/job-applications":
             if not self.require_role("admin"):
                 return
@@ -1127,6 +1195,9 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
                     ).fetchone()
                 if not row:
                     self.send_json(404, {"error": "No se encontró la solicitud de empleo."})
+                    return
+                if not row["cv_filename"]:
+                    self.send_json(404, {"error": "Esta candidatura no incluye currículum."})
                     return
                 file_path = DATABASE_PATH.parent / "solicitudes_empleo" / row["cv_storage_name"]
                 content = file_path.read_bytes()
@@ -1411,22 +1482,38 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
 
     def do_DELETE(self):
         path = urlparse(self.path).path
-        match = re.fullmatch(r"/api/admin/job-applications/([a-f0-9]{32})", path)
-        if not match:
+        quote_match = re.fullmatch(r"/api/admin/quote-requests/([a-f0-9]{32})", path)
+        application_match = re.fullmatch(r"/api/admin/job-applications/([a-f0-9]{32})", path)
+        if not quote_match and not application_match:
             self.send_json(404, {"error": "Ruta no encontrada."})
             return
         if not self.require_role("admin"):
+            return
+        if quote_match:
+            try:
+                with database() as connection:
+                    result = connection.execute(
+                        "DELETE FROM quote_requests WHERE id = ?",
+                        (quote_match.group(1),),
+                    )
+                    if result.rowcount == 0:
+                        self.send_json(404, {"error": "No se encontró la solicitud de presupuesto."})
+                        return
+            except DATABASE_ERRORS:
+                self.send_json(500, {"error": "No se pudo eliminar la solicitud de presupuesto."})
+                return
+            self.send_json(200, {"ok": True})
             return
         try:
             with database() as connection:
                 row = connection.execute(
                     "SELECT cv_storage_name FROM job_applications WHERE id = ?",
-                    (match.group(1),),
+                    (application_match.group(1),),
                 ).fetchone()
                 if not row:
                     self.send_json(404, {"error": "No se encontró la solicitud de empleo."})
                     return
-                connection.execute("DELETE FROM job_applications WHERE id = ?", (match.group(1),))
+                connection.execute("DELETE FROM job_applications WHERE id = ?", (application_match.group(1),))
             file_path = DATABASE_PATH.parent / "solicitudes_empleo" / row["cv_storage_name"]
             file_path.unlink(missing_ok=True)
         except DATABASE_ERRORS:
@@ -1581,6 +1668,113 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
             self.send_json(400, {"error": str(error)})
             return
 
+        if path == "/api/quote-requests":
+            if payload.get("website"):
+                self.send_json(201, {"ok": True})
+                return
+            if quote_request_is_rate_limited(self.client_address[0]):
+                self.send_json(429, {"error": "Se han recibido demasiadas solicitudes desde esta conexión. Inténtalo más tarde."})
+                return
+            name = payload.get("name")
+            phone = payload.get("phone")
+            email = payload.get("email")
+            service = payload.get("service")
+            message = payload.get("message")
+            address = payload.get("address")
+            if (
+                not isinstance(name, str)
+                or not name.strip()
+                or len(name.strip()) > 120
+                or not isinstance(phone, str)
+                or not re.fullmatch(r"[0-9+().\-\s]{6,30}", phone.strip())
+                or not isinstance(email, str)
+                or len(email.strip()) > 254
+                or not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email.strip())
+                or service not in ("limpieza", "jardineria", "conserjeria", "varios")
+                or not isinstance(message, str)
+                or not message.strip()
+                or len(message.strip()) > 4000
+                or not isinstance(address, str)
+                or not address.strip()
+                or len(address.strip()) > 500
+            ):
+                self.send_json(400, {"error": "Revisa los datos de contacto, la ubicación y los detalles del presupuesto."})
+                return
+            request_id = secrets.token_hex(16)
+            submitted_at = utc_now()
+            try:
+                with database() as connection:
+                    connection.execute(
+                        """
+                        INSERT INTO quote_requests
+                            (id, name, phone, email, service, message, address, submitted_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            request_id,
+                            " ".join(name.split()),
+                            phone.strip(),
+                            email.strip().lower(),
+                            service,
+                            message.strip(),
+                            address.strip(),
+                            submitted_at,
+                        ),
+                    )
+            except DATABASE_ERRORS:
+                self.send_json(500, {"error": "No se pudo guardar la solicitud de presupuesto. Inténtalo de nuevo."})
+                return
+            self.send_json(201, {"ok": True, "message": "Solicitud de presupuesto enviada correctamente."})
+            return
+
+        if path == "/api/admin/clients":
+            admin = self.require_role("admin")
+            if not admin:
+                return
+            name = payload.get("name")
+            contact = payload.get("contact")
+            address = payload.get("address")
+            if (
+                not isinstance(name, str)
+                or not name.strip()
+                or len(name.strip()) > 120
+                or not isinstance(contact, str)
+                or not contact.strip()
+                or len(contact.strip()) > 254
+                or not isinstance(address, str)
+                or not address.strip()
+                or len(address.strip()) > 500
+            ):
+                self.send_json(400, {"error": "Completa un nombre, contacto y dirección válidos."})
+                return
+            client_id = secrets.token_hex(16)
+            created_at = utc_now()
+            try:
+                with database() as connection:
+                    connection.execute(
+                        """
+                        INSERT INTO clients (id, name, contact, address, created_at)
+                        VALUES (?, ?, ?, ?, ?)
+                        """,
+                        (client_id, " ".join(name.split()), contact.strip(), address.strip(), created_at),
+                    )
+            except DATABASE_ERRORS:
+                self.send_json(500, {"error": "No se pudo guardar el cliente."})
+                return
+            self.send_json(
+                201,
+                {
+                    "client": {
+                        "id": client_id,
+                        "name": " ".join(name.split()),
+                        "contact": contact.strip(),
+                        "address": address.strip(),
+                        "created_at": created_at,
+                    }
+                },
+            )
+            return
+
         if path == "/api/job-applications":
             if payload.get("website"):
                 self.send_json(201, {"ok": True})
@@ -1593,8 +1787,8 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
             phone = payload.get("phone")
             email = payload.get("email")
             notes = payload.get("notes", "")
-            filename = payload.get("filename")
-            content_base64 = payload.get("content")
+            filename = payload.get("filename", "")
+            content_base64 = payload.get("content", "")
             consent = payload.get("privacyConsent")
             if (
                 not isinstance(name, str)
@@ -1611,37 +1805,40 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
             ):
                 self.send_json(400, {"error": "Revisa el nombre, teléfono, correo y consentimiento de privacidad."})
                 return
-            if (
-                not isinstance(filename, str)
-                or not filename.strip()
-                or len(filename) > 255
-                or not isinstance(content_base64, str)
-            ):
-                self.send_json(400, {"error": "Adjunta el currículum en formato PDF."})
+            if not isinstance(filename, str) or not isinstance(content_base64, str):
+                self.send_json(400, {"error": "El currículum adjunto no es válido."})
                 return
-            filename = re.split(r"[\\/]", filename.strip())[-1]
-            if not filename.lower().endswith(".pdf"):
-                self.send_json(400, {"error": "El currículum debe ser un archivo PDF."})
+            has_filename = bool(filename.strip())
+            has_content = bool(content_base64)
+            if has_filename != has_content or len(filename) > 255:
+                self.send_json(400, {"error": "Selecciona un currículum PDF válido o envía la candidatura sin archivo."})
                 return
-            try:
-                content = base64.b64decode(content_base64, validate=True)
-            except (ValueError, base64.binascii.Error):
-                self.send_json(400, {"error": "El contenido del currículum no es válido."})
-                return
-            if not content or len(content) > MAX_JOB_APPLICATION_CV_BYTES:
-                self.send_json(413, {"error": "El currículum debe ocupar como máximo 4 MB."})
-                return
-            if not content.startswith(b"%PDF-"):
-                self.send_json(400, {"error": "El archivo adjunto no parece ser un PDF válido."})
-                return
+            content = b""
+            if has_filename:
+                filename = re.split(r"[\\/]", filename.strip())[-1]
+                if not filename.lower().endswith(".pdf"):
+                    self.send_json(400, {"error": "El currículum debe ser un archivo PDF."})
+                    return
+                try:
+                    content = base64.b64decode(content_base64, validate=True)
+                except (ValueError, base64.binascii.Error):
+                    self.send_json(400, {"error": "El contenido del currículum no es válido."})
+                    return
+                if not content or len(content) > MAX_JOB_APPLICATION_CV_BYTES:
+                    self.send_json(413, {"error": "El currículum debe ocupar como máximo 4 MB."})
+                    return
+                if not content.startswith(b"%PDF-"):
+                    self.send_json(400, {"error": "El archivo adjunto no parece ser un PDF válido."})
+                    return
 
             application_id = secrets.token_hex(16)
             storage_name = f"{application_id}.pdf"
             file_path = DATABASE_PATH.parent / "solicitudes_empleo" / storage_name
             uploaded_at = utc_now()
             try:
-                file_path.parent.mkdir(parents=True, exist_ok=True)
-                file_path.write_bytes(content)
+                if content:
+                    file_path.parent.mkdir(parents=True, exist_ok=True)
+                    file_path.write_bytes(content)
                 with database() as connection:
                     connection.execute(
                         """
@@ -1658,7 +1855,7 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
                             notes.strip(),
                             filename,
                             storage_name,
-                            hashlib.sha256(content).hexdigest(),
+                            hashlib.sha256(content).hexdigest() if content else "",
                             uploaded_at,
                             uploaded_at,
                         ),

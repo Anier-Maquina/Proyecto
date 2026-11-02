@@ -424,17 +424,19 @@
                 <div class="lg:col-span-7">
                     <div class="bg-white rounded-3xl p-8 sm:p-10 shadow-sm border border-slate-100 relative">
                         <!-- Success Message Box (Hidden by default) -->
-                        <div id="success-alert" class="hidden mb-6 p-4 rounded-2xl bg-ada-50 border border-ada-200 text-ada-800 flex items-center gap-3 animate-fade-in">
+                        <div id="success-alert" role="status" aria-live="polite" class="hidden mb-6 p-4 rounded-2xl bg-ada-50 border border-ada-200 text-ada-800 flex items-center gap-3 animate-fade-in">
                             <div class="w-8 h-8 rounded-full bg-ada-600 text-white flex items-center justify-center flex-shrink-0">
                                 <i class="fa-solid fa-check text-sm"></i>
                             </div>
                             <div>
-                                <div class="font-bold text-sm">¡Mensaje enviado con éxito!</div>
-                                <div class="text-xs text-ada-700">Nos pondremos en contacto con usted a la mayor brevedad posible.</div>
+                                <div class="font-bold text-sm">¡Solicitud de presupuesto enviada con éxito!</div>
+                                <div class="text-xs text-ada-700">Hemos recibido sus datos y nos pondremos en contacto con usted a la mayor brevedad posible.</div>
                             </div>
                         </div>
+                        <div id="quote-error-alert" class="hidden mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700" role="alert"></div>
 
                         <form id="contact-form" class="space-y-6">
+                            <label class="hidden" aria-hidden="true">No rellenar<input id="quote-website" type="text" tabindex="-1" autocomplete="off"></label>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                 <div class="space-y-2">
                                     <label for="nombre" class="block text-sm font-semibold text-slate-700">Nombre completo *</label>
@@ -444,6 +446,11 @@
                                     <label for="telefono" class="block text-sm font-semibold text-slate-700">Teléfono *</label>
                                     <input type="tel" id="telefono" required placeholder="Ej. 600 000 000" class="w-full px-4 py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-ada-500 focus:border-transparent text-slate-800 placeholder-slate-400 text-sm transition-all">
                                 </div>
+                            </div>
+
+                            <div class="space-y-2">
+                                <label for="ubicacion" class="block text-sm font-semibold text-slate-700">Dirección de la ubicación del servicio *</label>
+                                <input type="text" id="ubicacion" maxlength="500" required placeholder="Dirección donde se necesita el servicio" class="w-full px-4 py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-ada-500 focus:border-transparent text-slate-800 placeholder-slate-400 text-sm transition-all">
                             </div>
 
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -483,7 +490,7 @@
             <div class="mb-10 text-center">
                 <span class="rounded-full bg-ada-100 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-ada-700">Únete al equipo</span>
                 <h2 class="mt-4 text-3xl font-extrabold tracking-tight text-slate-900">Trabaja con Nosotros</h2>
-                <p class="mt-3 text-slate-600">Déjanos tus datos y adjunta tu currículum. El equipo de selección recibirá tu solicitud de forma privada.</p>
+                <p class="mt-3 text-slate-600">Déjanos tus datos y, si quieres, adjunta tu currículum. El equipo de selección recibirá tu solicitud de forma privada.</p>
             </div>
             <form id="job-application-form" class="space-y-5 rounded-3xl border border-slate-100 bg-slate-50 p-6 shadow-sm sm:p-8">
                 <div id="job-application-status" class="hidden rounded-xl p-4 text-sm" role="status" aria-live="polite"></div>
@@ -503,8 +510,8 @@
                     </div>
                 </div>
                 <div>
-                    <label for="job-application-cv" class="mb-2 block text-sm font-semibold text-slate-700">Currículum (PDF, máximo 4 MB) *</label>
-                    <input id="job-application-cv" type="file" accept=".pdf,application/pdf" required class="block w-full rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-ada-50 file:px-4 file:py-2 file:font-semibold file:text-ada-700">
+                    <label for="job-application-cv" class="mb-2 block text-sm font-semibold text-slate-700">Currículum (PDF, máximo 4 MB; opcional)</label>
+                    <input id="job-application-cv" type="file" accept=".pdf,application/pdf" class="block w-full rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-ada-50 file:px-4 file:py-2 file:font-semibold file:text-ada-700">
                 </div>
                 <div>
                     <label for="job-application-notes" class="mb-2 block text-sm font-semibold text-slate-700">Información adicional (opcional)</label>
@@ -512,7 +519,7 @@
                 </div>
                 <label class="flex items-start gap-3 text-sm text-slate-600">
                     <input id="job-application-consent" type="checkbox" required class="mt-1 h-4 w-4 rounded border-slate-300 text-ada-600 focus:ring-ada-500">
-                    <span>Consiento que Grupo ADA trate estos datos y mi currículum para valorar mi candidatura y ponerse en contacto conmigo. *</span>
+                    <span>Consiento que Grupo ADA trate estos datos y, si lo adjunto, mi currículum para valorar mi candidatura y ponerse en contacto conmigo. *</span>
                 </label>
                 <button id="job-application-submit" type="submit" class="flex w-full items-center justify-center gap-2 rounded-xl bg-ada-600 px-5 py-4 font-semibold text-white shadow-lg transition hover:bg-ada-700 disabled:cursor-wait disabled:opacity-60">
                     <i class="fa-solid fa-paper-plane"></i>
@@ -599,24 +606,51 @@
             });
         });
 
-        // Form submission handling (simulation without alert())
         const contactForm = document.getElementById('contact-form');
         const successAlert = document.getElementById('success-alert');
+        const quoteErrorAlert = document.getElementById('quote-error-alert');
+        const quoteSubmitButton = contactForm.querySelector('button[type="submit"]');
 
-        contactForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            
-            // Show success message
-            successAlert.classList.remove('hidden');
-            contactForm.reset();
-
-            // Scroll to success alert smoothly
-            successAlert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-
-            // Hide success alert after 6 seconds
-            setTimeout(() => {
-                successAlert.classList.add('hidden');
-            }, 6000);
+        contactForm.addEventListener('submit', async event => {
+            event.preventDefault();
+            successAlert.classList.add('hidden');
+            quoteErrorAlert.classList.add('hidden');
+            quoteSubmitButton.disabled = true;
+            quoteSubmitButton.classList.add('opacity-60', 'cursor-wait');
+            quoteSubmitButton.querySelector('span').textContent = 'Enviando solicitud...';
+            try {
+                const response = await fetch('/api/quote-requests', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({
+                        name: document.getElementById('nombre').value.trim(),
+                        phone: document.getElementById('telefono').value.trim(),
+                        email: document.getElementById('email').value.trim(),
+                        service: document.getElementById('servicio').value,
+                        message: document.getElementById('mensaje').value.trim(),
+                        address: document.getElementById('ubicacion').value.trim(),
+                        website: document.getElementById('quote-website').value
+                    })
+                });
+                const result = await response.json().catch(() => null);
+                if (!response.ok) {
+                    throw new Error(result?.error || `No se pudo enviar la solicitud (HTTP ${response.status}).`);
+                }
+                contactForm.reset();
+                successAlert.classList.remove('hidden');
+                successAlert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                setTimeout(() => successAlert.classList.add('hidden'), 8000);
+            } catch (error) {
+                quoteErrorAlert.textContent = error instanceof Error
+                    ? error.message
+                    : 'No se pudo enviar la solicitud. Comprueba tu conexión e inténtalo de nuevo.';
+                quoteErrorAlert.classList.remove('hidden');
+                quoteErrorAlert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } finally {
+                quoteSubmitButton.disabled = false;
+                quoteSubmitButton.classList.remove('opacity-60', 'cursor-wait');
+                quoteSubmitButton.querySelector('span').textContent = 'Enviar Solicitud de Presupuesto';
+            }
         });
 
         const jobApplicationForm = document.getElementById('job-application-form');
@@ -631,11 +665,11 @@
                 jobApplicationStatus.className = `rounded-xl p-4 text-sm ${isError ? 'bg-red-50 text-red-700' : 'bg-ada-50 text-ada-800'}`;
                 jobApplicationStatus.classList.remove('hidden');
             };
-            if (!file || !file.name.toLowerCase().endsWith('.pdf')) {
-                status('Adjunta tu currículum en formato PDF.', true);
+            if (file && !file.name.toLowerCase().endsWith('.pdf')) {
+                status('El currículum debe ser un archivo PDF.', true);
                 return;
             }
-            if (file.size === 0 || file.size > 4 * 1024 * 1024) {
+            if (file && (file.size === 0 || file.size > 4 * 1024 * 1024)) {
                 status('El currículum debe ocupar como máximo 4 MB.', true);
                 return;
             }
@@ -643,7 +677,7 @@
             jobApplicationSubmit.disabled = true;
             status('Enviando tu candidatura...');
             try {
-                const content = await new Promise((resolve, reject) => {
+                const content = file ? await new Promise((resolve, reject) => {
                     const reader = new FileReader();
                     reader.onload = () => {
                         if (typeof reader.result !== 'string') {
@@ -654,7 +688,7 @@
                     };
                     reader.onerror = () => reject(new Error('No se pudo leer el currículum.'));
                     reader.readAsDataURL(file);
-                });
+                }) : '';
                 const response = await fetch('/api/job-applications', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
@@ -663,7 +697,7 @@
                         phone: document.getElementById('job-application-phone').value.trim(),
                         email: document.getElementById('job-application-email').value.trim(),
                         notes: document.getElementById('job-application-notes').value.trim(),
-                        filename: file.name,
+                        filename: file?.name || '',
                         content,
                         privacyConsent: document.getElementById('job-application-consent').checked,
                         website: document.getElementById('job-application-website').value

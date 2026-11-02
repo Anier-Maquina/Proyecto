@@ -295,6 +295,7 @@
                 <a href="#" onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl bg-brandBlue text-white font-medium shadow-md transition-all"><span>📊 Panel Principal</span></a>
                 <a href="#" onclick="switchTab('attendance')" id="nav-attendance" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition-all"><span>📍 Control horario</span></a>
                 <a href="#" onclick="switchTab('structure')" id="nav-structure" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition-all"><span>🏢 Estructura Empresa</span></a>
+                <a href="#" onclick="switchTab('clients')" id="nav-clients" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition-all"><span>🤝 Clientes</span></a>
                 <a href="#" onclick="switchTab('inventory')" id="nav-inventory" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition-all"><span>📦 Gestión Inventario</span></a>
                 <a href="#" onclick="switchTab('archive')" id="nav-archive" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition-all"><span>📁 Archivo e Impresión</span></a>
                 <a href="#" onclick="switchTab('signing')" id="nav-signing" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition-all"><span>✍️ Firma Electrónica</span></a>
@@ -461,6 +462,49 @@
                         <p class="mt-1 text-sm text-gray-500">Selecciona un departamento y después un trabajador para consultar y editar su ficha.</p>
                         <div id="organization-department-buttons" class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3"></div>
                         <div id="department-list" class="mt-5"></div>
+                    </section>
+                </div>
+
+                <div id="tab-clients" class="space-y-6 tab-content hidden">
+                    <section class="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+                        <div class="flex flex-col gap-4 border-b border-gray-100 p-6 sm:flex-row sm:items-end sm:justify-between">
+                            <div>
+                                <h3 class="text-lg font-bold text-brandDark">Directorio de clientes</h3>
+                                <p class="mt-1 text-sm text-gray-500">Busca por nombre o dirección de ubicación y registra nuevos clientes.</p>
+                            </div>
+                            <button id="client-create-button" type="button" class="custom-gradient rounded-xl px-4 py-2 text-sm font-medium text-white shadow">＋ Crear cliente</button>
+                        </div>
+                        <div class="flex flex-col gap-3 p-6 sm:flex-row sm:items-end">
+                            <label for="clients-search" class="flex-1 text-sm font-medium text-gray-700">Buscar clientes
+                                <input id="clients-search" type="search" autocomplete="off" placeholder="Nombre o dirección de ubicación" class="mt-1 w-full rounded-xl border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brandBlue">
+                            </label>
+                            <button id="clients-refresh" type="button" class="rounded-xl border border-brandBlue px-4 py-3 text-sm font-semibold text-brandBlue hover:bg-blue-50">Actualizar</button>
+                        </div>
+                        <p id="clients-status" class="hidden px-6 pb-4 text-sm" role="status" aria-live="polite"></p>
+                        <div class="overflow-x-auto">
+                            <table class="w-full min-w-[640px] text-left text-sm">
+                                <thead class="bg-gray-50 text-xs uppercase text-gray-500"><tr><th class="p-4">Cliente</th><th class="p-4">Contacto</th><th class="p-4">Dirección de ubicación</th></tr></thead>
+                                <tbody id="clients-table" class="divide-y divide-gray-100"></tbody>
+                            </table>
+                        </div>
+                        <p id="clients-empty" class="hidden p-6 text-center text-sm text-gray-500">No hay clientes que coincidan con la búsqueda.</p>
+                    </section>
+                    <section class="overflow-hidden rounded-2xl border border-brandBlue/20 bg-white shadow-sm">
+                        <div class="flex flex-col gap-3 border-b border-gray-100 p-6 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <h3 class="text-lg font-bold text-brandDark">Solicitudes de presupuesto recibidas</h3>
+                                <p class="mt-1 text-sm text-gray-500">Las solicitudes enviadas desde la web de marketing aparecen aquí al confirmarse.</p>
+                            </div>
+                            <span id="quote-request-count" class="rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-brandBlue">0 solicitudes</span>
+                        </div>
+                        <p id="quote-requests-status" class="hidden p-4 text-sm" role="status" aria-live="polite"></p>
+                        <div class="overflow-x-auto">
+                            <table class="w-full min-w-[1000px] text-left text-sm">
+                                <thead class="bg-gray-50 text-xs uppercase text-gray-500"><tr><th class="p-4">Fecha</th><th class="p-4">Nombre</th><th class="p-4">Teléfono</th><th class="p-4">Correo</th><th class="p-4">Servicio</th><th class="p-4">Ubicación</th><th class="p-4">Detalles</th><th class="p-4">Acciones</th></tr></thead>
+                                <tbody id="quote-requests-table" class="divide-y divide-gray-100"></tbody>
+                            </table>
+                        </div>
+                        <p id="quote-requests-empty" class="hidden p-6 text-center text-sm text-gray-500">Aún no se han recibido solicitudes de presupuesto.</p>
                     </section>
                 </div>
 
@@ -652,7 +696,7 @@
                         <div class="flex flex-col gap-3 border-b border-gray-100 p-6 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                                 <h3 class="text-lg font-bold text-brandDark">Candidaturas recibidas</h3>
-                                <p class="mt-1 text-sm text-gray-500">Datos y currículums enviados desde la web pública. Solo administración puede consultarlos.</p>
+                                <p class="mt-1 text-sm text-gray-500">Datos enviados desde la web pública y currículum cuando se adjunte. Solo administración puede consultarlos.</p>
                             </div>
                             <button id="job-applications-refresh" type="button" class="rounded-xl border border-brandBlue px-4 py-2 text-sm font-semibold text-brandBlue hover:bg-blue-50">Actualizar</button>
                         </div>
@@ -888,10 +932,7 @@
             { id: 3, name: 'HER-015 (Taladros)', category: 'Herramientas', quantity: 25, locationId: 2 },
             { id: 4, name: 'SEG-003 (Botiquines)', category: 'Seguridad', quantity: 12, locationId: 3 }
         ];
-        const clients = [
-            { id: 1, name: 'Constructora Horizonte', contact: 'contacto@horizonte.example', address: 'Av. Central 450, Distrito Norte' },
-            { id: 2, name: 'Comunidad El Bosque', contact: '+1 555 0202', address: 'Calle Principal, zona norte' }
-        ];
+        const clients = [];
         const archiveFolders = [
             { id: 1, name: 'General' },
             { id: 2, name: 'Recursos Humanos' },
@@ -939,6 +980,7 @@
             if (tabId === 'inventory') renderInventory();
             if (tabId === 'archive') renderArchive();
             if (tabId === 'tasks') renderCalendar();
+            if (tabId === 'clients') loadClientsSection();
             if (tabId === 'security') loadAdminSecurityEvents();
             if (tabId === 'job-applications') loadJobApplications();
             if (tabId === 'signing') loadSigningDocuments();
@@ -2035,7 +2077,7 @@
             renderInventory();
         });
 
-        document.getElementById('client-form').addEventListener('submit', event => {
+        document.getElementById('client-form').addEventListener('submit', async event => {
             event.preventDefault();
             const name = document.getElementById('client-name').value.trim();
             const contact = document.getElementById('client-contact').value.trim();
@@ -2044,9 +2086,23 @@
                 showFormError('client-form-error', 'Completa el nombre, el contacto y la dirección física.');
                 return;
             }
-            clients.push({ id: nextClientId++, name, contact, address });
-            closeClientModal();
-            renderDashboard();
+            const submitButton = event.currentTarget.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            try {
+                const { client } = await requestApi('/api/admin/clients', {
+                    method: 'POST',
+                    body: JSON.stringify({ name, contact, address })
+                });
+                clients.push(client);
+                closeClientModal();
+                renderClients();
+                setClientsStatus('Cliente creado correctamente.');
+                document.getElementById('clients-status').classList.remove('hidden');
+            } catch (error) {
+                showFormError('client-form-error', error instanceof Error ? error.message : 'No se pudo guardar el cliente.');
+            } finally {
+                submitButton.disabled = false;
+            }
         });
 
         document.getElementById('folder-form').addEventListener('submit', event => {
@@ -2945,14 +3001,19 @@
                     });
                     const cvCell = document.createElement('td');
                     cvCell.className = 'p-4 align-top';
-                    const cvLink = document.createElement('a');
-                    cvLink.href = `/api/admin/job-applications/${encodeURIComponent(application.id)}/cv`;
-                    cvLink.target = '_blank';
-                    cvLink.rel = 'noopener';
-                    cvLink.className = 'font-semibold text-brandBlue hover:underline';
-                    cvLink.textContent = application.cv_filename;
-                    cvLink.setAttribute('aria-label', `Descargar currículum de ${application.name}`);
-                    cvCell.appendChild(cvLink);
+                    if (application.cv_filename) {
+                        const cvLink = document.createElement('a');
+                        cvLink.href = `/api/admin/job-applications/${encodeURIComponent(application.id)}/cv`;
+                        cvLink.target = '_blank';
+                        cvLink.rel = 'noopener';
+                        cvLink.className = 'font-semibold text-brandBlue hover:underline';
+                        cvLink.textContent = application.cv_filename;
+                        cvLink.setAttribute('aria-label', `Descargar currículum de ${application.name}`);
+                        cvCell.appendChild(cvLink);
+                    } else {
+                        cvCell.textContent = 'No adjuntó CV';
+                        cvCell.classList.add('text-gray-400');
+                    }
                     row.appendChild(cvCell);
 
                     const actionCell = document.createElement('td');
@@ -2986,6 +3047,123 @@
         }
 
         document.getElementById('job-applications-refresh').addEventListener('click', loadJobApplications);
+
+        function setClientsStatus(message, isError = false) {
+            const status = document.getElementById('clients-status');
+            status.textContent = message;
+            status.className = `px-6 pb-4 text-sm ${isError ? 'text-red-700' : 'text-emerald-700'}`;
+        }
+
+        function renderClients() {
+            const query = document.getElementById('clients-search').value.trim().toLocaleLowerCase();
+            const table = document.getElementById('clients-table');
+            table.replaceChildren();
+            const matchingClients = clients.filter(client =>
+                client.name.toLocaleLowerCase().includes(query)
+                || client.address.toLocaleLowerCase().includes(query)
+            );
+            matchingClients.forEach(client => {
+                const row = document.createElement('tr');
+                [client.name, client.contact, client.address].forEach(value => {
+                    const cell = document.createElement('td');
+                    cell.className = 'p-4 align-top text-gray-700';
+                    cell.textContent = value;
+                    row.appendChild(cell);
+                });
+                table.appendChild(row);
+            });
+            document.getElementById('clients-empty').classList.toggle('hidden', matchingClients.length > 0);
+            document.getElementById('stat-clients').textContent = String(clients.length);
+            const dashboardTable = document.getElementById('dashboard-clients');
+            dashboardTable.replaceChildren();
+            clients.forEach(client => {
+                const row = document.createElement('tr');
+                addCell(row, client.name, 'p-4 font-semibold text-brandDark');
+                addCell(row, client.contact, 'p-4 text-gray-600');
+                addCell(row, client.address, 'p-4 text-gray-600');
+                dashboardTable.appendChild(row);
+            });
+        }
+
+        function renderQuoteRequests(requests) {
+            const table = document.getElementById('quote-requests-table');
+            table.replaceChildren();
+            document.getElementById('quote-request-count').textContent =
+                `${requests.length} solicitud${requests.length === 1 ? '' : 'es'}`;
+            requests.forEach(request => {
+                const row = document.createElement('tr');
+                const submitted = new Date(request.submitted_at);
+                const dateText = Number.isNaN(submitted.getTime())
+                    ? request.submitted_at
+                    : submitted.toLocaleString('es-ES');
+                const serviceNames = {
+                    limpieza: 'Limpieza profesional',
+                    jardineria: 'Jardinería y paisajismo',
+                    conserjeria: 'Conserjería y control',
+                    varios: 'Servicios combinados / otros'
+                };
+                [dateText, request.name, request.phone, request.email, serviceNames[request.service] || request.service, request.address, request.message].forEach(value => {
+                    const cell = document.createElement('td');
+                    cell.className = 'max-w-xs whitespace-pre-wrap p-4 align-top text-gray-700';
+                    cell.textContent = value;
+                    row.appendChild(cell);
+                });
+                const actionCell = document.createElement('td');
+                actionCell.className = 'p-4 align-top';
+                const deleteButton = document.createElement('button');
+                deleteButton.type = 'button';
+                deleteButton.className = 'font-semibold text-red-600 hover:underline';
+                deleteButton.textContent = 'Eliminar';
+                deleteButton.setAttribute('aria-label', `Eliminar solicitud de ${request.name}`);
+                deleteButton.addEventListener('click', async () => {
+                    if (!window.confirm(`¿Eliminar la solicitud de presupuesto de ${request.name}?`)) return;
+                    deleteButton.disabled = true;
+                    try {
+                        await requestApi(`/api/admin/quote-requests/${encodeURIComponent(request.id)}`, { method: 'DELETE' });
+                        row.remove();
+                        const remaining = table.children.length;
+                        document.getElementById('quote-request-count').textContent =
+                            `${remaining} solicitud${remaining === 1 ? '' : 'es'}`;
+                        document.getElementById('quote-requests-empty').classList.toggle('hidden', remaining > 0);
+                        setQuoteRequestsStatus('Solicitud eliminada.');
+                    } catch (error) {
+                        setQuoteRequestsStatus(error instanceof Error ? error.message : 'No se pudo eliminar la solicitud.', true);
+                        deleteButton.disabled = false;
+                    }
+                });
+                actionCell.appendChild(deleteButton);
+                row.appendChild(actionCell);
+                table.appendChild(row);
+            });
+            document.getElementById('quote-requests-empty').classList.toggle('hidden', requests.length > 0);
+        }
+
+        function setQuoteRequestsStatus(message, isError = false) {
+            const status = document.getElementById('quote-requests-status');
+            status.textContent = message;
+            status.className = `p-4 text-sm ${isError ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`;
+        }
+
+        async function loadClientsSection() {
+            document.getElementById('clients-status').classList.add('hidden');
+            document.getElementById('quote-requests-status').classList.add('hidden');
+            try {
+                const [clientResult, quoteResult] = await Promise.all([
+                    requestApi('/api/admin/clients'),
+                    requestApi('/api/admin/quote-requests')
+                ]);
+                clients.splice(0, clients.length, ...clientResult.clients);
+                renderClients();
+                renderQuoteRequests(quoteResult.requests);
+            } catch (error) {
+                setClientsStatus(error instanceof Error ? error.message : 'No se pudieron cargar los clientes.', true);
+                setQuoteRequestsStatus(error instanceof Error ? error.message : 'No se pudieron cargar las solicitudes de presupuesto.', true);
+            }
+        }
+
+        document.getElementById('clients-search').addEventListener('input', renderClients);
+        document.getElementById('clients-refresh').addEventListener('click', loadClientsSection);
+        document.getElementById('client-create-button').addEventListener('click', openClientModal);
 
         function initializeFinanceControls() {
             const now = new Date();

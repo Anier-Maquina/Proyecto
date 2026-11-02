@@ -511,6 +511,8 @@ class AttendanceServerTests(unittest.TestCase):
         }
         with server.JOB_APPLICATION_ATTEMPTS_LOCK:
             server.JOB_APPLICATION_ATTEMPTS.pop("127.0.0.1", None)
+        with server.QUOTE_REQUEST_ATTEMPTS_LOCK:
+            server.QUOTE_REQUEST_ATTEMPTS.pop("127.0.0.1", None)
         response, result = self.request(
             "/api/job-applications",
             {**payload, "content": base64.b64encode(b"not a PDF").decode("ascii")},
@@ -563,6 +565,89 @@ class AttendanceServerTests(unittest.TestCase):
         self.assertTrue(deleted["ok"])
         response, listing = self.request("/api/admin/job-applications")
         self.assertEqual(listing["applications"], [])
+
+        response, result = self.request(
+            "/api/job-applications",
+            {
+                "name": "Candidata sin CV",
+                "phone": "+34 600 000 000",
+                "email": "sin-cv@example.com",
+                "privacyConsent": True,
+            },
+        )
+        self.assertEqual(response.status, 201)
+        response, listing = self.request("/api/admin/job-applications")
+        self.assertEqual(response.status, 200)
+        no_cv_application = listing["applications"][0]
+        self.assertEqual(no_cv_application["name"], "Candidata sin CV")
+        self.assertEqual(no_cv_application["cv_filename"], "")
+        response, error = self.request(
+            f"/api/admin/job-applications/{no_cv_application['id']}/cv"
+        )
+        self.assertEqual(response.status, 404)
+        self.assertIn("no incluye currículum", error["error"])
+        self.request(
+            f"/api/admin/job-applications/{no_cv_application['id']}",
+            method="DELETE",
+        )
+
+    def test_quote_requests_and_client_directory_are_admin_managed(self):
+        payload = {
+            "name": "Comunidad Los Olivos",
+            "phone": "+34 600 111 222",
+            "email": "olivos@example.com",
+            "service": "limpieza",
+            "message": "Presupuesto de limpieza de zonas comunes",
+            "address": "Calle Mayor 20, Madrid",
+            "website": "",
+        }
+        response, result = self.request(
+            "/api/quote-requests",
+            {**payload, "address": ""},
+        )
+        self.assertEqual(response.status, 400)
+        self.assertIn("ubicación", result["error"])
+        response, result = self.request("/api/quote-requests", payload)
+        self.assertEqual(response.status, 201)
+        self.assertTrue(result["ok"])
+
+        response, _ = self.request("/api/admin/quote-requests")
+        self.assertEqual(response.status, 401)
+        response, _ = self.request("/api/admin/clients")
+        self.assertEqual(response.status, 401)
+
+        self.login_pin("administrador", "7804")
+        response, requests = self.request("/api/admin/quote-requests")
+        self.assertEqual(response.status, 200)
+        self.assertEqual(len(requests["requests"]), 1)
+        quote = requests["requests"][0]
+        self.assertEqual(quote["address"], payload["address"])
+        self.assertEqual(quote["message"], payload["message"])
+
+        response, created = self.request(
+            "/api/admin/clients",
+            {
+                "name": "Comunidad Los Olivos",
+                "contact": "+34 600 111 222 · olivos@example.com",
+                "address": "Calle Mayor 20, Madrid",
+            },
+            method="POST",
+        )
+        self.assertEqual(response.status, 201)
+        client = created["client"]
+        response, listing = self.request("/api/admin/clients")
+        self.assertEqual(response.status, 200)
+        self.assertEqual(len(listing["clients"]), 1)
+        self.assertEqual(listing["clients"][0]["address"], payload["address"])
+
+        response, deleted = self.request(
+            f"/api/admin/quote-requests/{quote['id']}",
+            method="DELETE",
+        )
+        self.assertEqual(response.status, 200)
+        self.assertTrue(deleted["ok"])
+        with server.database() as connection:
+            connection.execute("DELETE FROM clients WHERE id = ?", (client["id"],))
 
     def test_admin_account_locks_after_five_failures_and_manual_command_unlocks(self):
         self.login_pin("administrador", "7804")
