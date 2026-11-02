@@ -1160,22 +1160,22 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
                            COALESCE(e.department, u.department, 'Sin asignar') AS department,
                            e.recorded_at,
                            CASE
-                               WHEN wl.user_id IS NOT NULL AND wl.reported_at >= ? THEN wl.latitude
+                               WHEN wl.user_id IS NOT NULL THEN wl.latitude
                                WHEN wl.user_id IS NULL AND e.location_available = 1 THEN e.latitude
                                ELSE NULL
                            END AS latitude,
                            CASE
-                               WHEN wl.user_id IS NOT NULL AND wl.reported_at >= ? THEN wl.longitude
+                               WHEN wl.user_id IS NOT NULL THEN wl.longitude
                                WHEN wl.user_id IS NULL AND e.location_available = 1 THEN e.longitude
                                ELSE NULL
                            END AS longitude,
                            CASE
-                               WHEN wl.user_id IS NOT NULL AND wl.reported_at >= ? THEN wl.accuracy
+                               WHEN wl.user_id IS NOT NULL THEN wl.accuracy
                                WHEN wl.user_id IS NULL AND e.location_available = 1 THEN e.accuracy
                                ELSE NULL
                            END AS accuracy,
                            CASE
-                               WHEN wl.user_id IS NOT NULL AND wl.reported_at >= ? THEN wl.location_timestamp
+                               WHEN wl.user_id IS NOT NULL THEN wl.location_timestamp
                                WHEN wl.user_id IS NULL AND e.location_available = 1 THEN e.location_timestamp
                                ELSE NULL
                            END AS location_timestamp,
@@ -1198,10 +1198,6 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
                     ORDER BY e.recorded_at DESC
                     """,
                     (
-                        live_location_cutoff,
-                        live_location_cutoff,
-                        live_location_cutoff,
-                        live_location_cutoff,
                         live_location_cutoff,
                         utc_now()[:10],
                     ),

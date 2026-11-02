@@ -765,6 +765,25 @@ class AttendanceServerTests(unittest.TestCase):
             ).fetchone()[0]
         self.assertEqual(location_count, 1)
 
+        stale_reported_at = (
+            server.datetime.now(server.timezone.utc)
+            - server.LIVE_LOCATION_MAX_AGE
+            - server.timedelta(seconds=1)
+        ).isoformat(timespec="milliseconds")
+        with server.database() as connection:
+            connection.execute(
+                "UPDATE worker_locations SET reported_at = ? WHERE user_id = ?",
+                (stale_reported_at, worker_id),
+            )
+        response, active_result = self.request("/api/admin/active")
+        self.assertEqual(response.status, 200)
+        worker = next(item for item in active_result["workers"] if item["name"] == "Operario 04")
+        self.assertEqual(worker["location_source"], "stale")
+        self.assertEqual(worker["latitude"], live_location["latitude"])
+        self.assertEqual(worker["longitude"], live_location["longitude"])
+        self.assertEqual(worker["accuracy"], live_location["accuracy"])
+        self.assertEqual(worker["location_timestamp"], live_location["locationTimestamp"])
+
         self.opener = worker_opener
         response, _ = self.request("/api/logout", {}, method="POST")
         self.assertEqual(response.status, 200)
