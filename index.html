@@ -163,7 +163,6 @@
             body.printing-attendance aside,
             body.printing-attendance header,
             body.printing-attendance #tab-dashboard,
-            body.printing-attendance #tab-workers,
             body.printing-attendance #tab-structure,
             body.printing-attendance #tab-inventory,
             body.printing-attendance #tab-archive,
@@ -295,7 +294,6 @@
             <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
                 <a href="#" onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl bg-brandBlue text-white font-medium shadow-md transition-all"><span>📊 Panel Principal</span></a>
                 <a href="#" onclick="switchTab('attendance')" id="nav-attendance" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition-all"><span>📍 Control horario</span></a>
-                <a href="#" onclick="switchTab('workers')" id="nav-workers" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition-all"><span>👥 Operarios y PINs</span></a>
                 <a href="#" onclick="switchTab('structure')" id="nav-structure" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition-all"><span>🏢 Estructura Empresa</span></a>
                 <a href="#" onclick="switchTab('inventory')" id="nav-inventory" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition-all"><span>📦 Gestión Inventario</span></a>
                 <a href="#" onclick="switchTab('archive')" id="nav-archive" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition-all"><span>📁 Archivo e Impresión</span></a>
@@ -435,24 +433,6 @@
                     </section>
                 </div>
 
-                <div id="tab-workers" class="space-y-6 tab-content hidden">
-                    <section class="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-                        <div class="border-b border-gray-100 p-6">
-                            <h3 class="text-lg font-bold text-brandDark">Gestión de operarios y PINs</h3>
-                            <p class="mt-1 text-sm text-gray-500">Edita nombres y apellidos. Los cambios se guardan en la base de datos y aparecen inmediatamente en el fichaje.</p>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full min-w-[760px] text-left text-sm">
-                                <thead class="bg-gray-50 text-xs uppercase text-gray-500">
-                                    <tr><th class="p-4">PIN</th><th class="p-4">Departamento</th><th class="p-4">Nombre</th><th class="p-4">Apellido</th><th class="p-4">Acción</th></tr>
-                                </thead>
-                                <tbody id="managed-workers-table" class="divide-y divide-gray-100"></tbody>
-                            </table>
-                        </div>
-                        <p id="workers-management-message" class="hidden p-5 text-sm" role="status" aria-live="polite"></p>
-                    </section>
-                </div>
-
                 <!-- STRUCTURE -->
                 <div id="tab-structure" class="space-y-6 tab-content hidden">
                     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
@@ -462,6 +442,19 @@
                             <button type="button" onclick="openWorkerModal()" class="custom-gradient text-white px-4 py-2 rounded-xl text-sm font-medium shadow">＋ Añadir trabajador</button>
                         </div>
                     </div>
+                    <section class="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm" aria-labelledby="structure-search-heading">
+                        <div>
+                            <h4 id="structure-search-heading" class="font-bold text-brandDark">Buscar y gestionar trabajador</h4>
+                            <p class="mt-1 text-sm text-gray-500">Busca por nombre para consultar y editar sus datos. El PIN se mantiene oculto hasta pulsar el botón del ojo.</p>
+                        </div>
+                        <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+                            <label for="structure-worker-search" class="block flex-1 text-sm font-medium text-gray-700">Nombre del trabajador
+                                <input id="structure-worker-search" type="search" autocomplete="off" placeholder="Escribe el nombre del trabajador" class="mt-1 w-full rounded-xl border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brandBlue">
+                            </label>
+                            <button type="button" onclick="openPinModal()" class="rounded-xl border border-brandTeal px-4 py-3 text-sm font-medium text-brandTeal hover:bg-teal-50">＋ Generar PIN</button>
+                        </div>
+                        <div id="structure-worker-results" class="mt-4 space-y-4" aria-live="polite"></div>
+                    </section>
                     <section class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6" aria-labelledby="general-management-heading">
                         <p class="text-xs font-semibold uppercase tracking-wider text-brandBlue">Nivel directivo</p>
                         <h4 id="general-management-heading" class="text-xl font-bold text-brandDark mt-1">Dirección General</h4>
@@ -664,13 +657,31 @@
             <div class="flex justify-between items-center"><h3 id="worker-modal-title" class="font-bold text-lg text-brandDark">Añadir trabajador</h3><button type="button" onclick="closeWorkerModal()" aria-label="Cerrar" class="font-bold text-gray-500 hover:text-brandDark">✕</button></div>
             <form id="worker-form" class="space-y-3">
                 <div><label for="worker-name" class="block text-xs font-semibold text-gray-600 mb-1">Nombre completo</label><input type="text" id="worker-name" name="name" autocomplete="name" maxlength="100" class="w-full px-4 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brandBlue" required></div>
-                <div><label for="worker-role" class="block text-xs font-semibold text-gray-600 mb-1">Cargo</label><input type="text" id="worker-role" name="role" maxlength="100" class="w-full px-4 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brandBlue" required></div>
-                <div><label for="worker-contact" class="block text-xs font-semibold text-gray-600 mb-1">Contacto (teléfono o correo)</label><input type="text" id="worker-contact" name="contact" maxlength="120" class="w-full px-4 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brandBlue" required></div>
+                <div><label for="worker-role" class="block text-xs font-semibold text-gray-600 mb-1">Cargo</label><input type="text" id="worker-role" name="role" maxlength="120" class="w-full px-4 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brandBlue"></div>
+                <div><label for="worker-contact" class="block text-xs font-semibold text-gray-600 mb-1">Contacto (teléfono o correo)</label><input type="text" id="worker-contact" name="contact" maxlength="160" class="w-full px-4 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brandBlue"></div>
                 <div><label for="worker-department" class="block text-xs font-semibold text-gray-600 mb-1">Departamento</label><select id="worker-department" name="department" class="w-full px-4 py-2 border rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brandBlue" required></select></div>
+                <div><label for="worker-communities" class="block text-xs font-semibold text-gray-600 mb-1">Comunidades o zonas (una por línea)</label><textarea id="worker-communities" name="communities" rows="3" maxlength="2000" class="w-full px-4 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brandBlue"></textarea></div>
                 <p id="worker-form-error" class="hidden text-sm text-red-600" role="alert"></p>
                 <div class="flex space-x-3 pt-2">
                     <button type="button" onclick="closeWorkerModal()" class="flex-1 bg-gray-100 text-gray-600 py-2 rounded-xl text-sm">Cancelar</button>
                     <button type="submit" class="flex-1 custom-gradient text-white py-2 rounded-xl text-sm font-medium">Guardar trabajador</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="pin-modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="pin-modal-title">
+        <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center"><h3 id="pin-modal-title" class="font-bold text-lg text-brandDark">Generar un PIN nuevo</h3><button type="button" onclick="closePinModal()" aria-label="Cerrar" class="font-bold text-gray-500 hover:text-brandDark">✕</button></div>
+            <p class="text-sm text-gray-600">El nuevo PIN aleatorio será único y sustituirá el actual. El PIN anterior dejará de funcionar.</p>
+            <form id="pin-form" class="space-y-3">
+                <label for="pin-worker-select" class="block text-xs font-semibold text-gray-600">Trabajador
+                    <select id="pin-worker-select" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm" required></select>
+                </label>
+                <p id="pin-form-error" class="hidden text-sm text-red-600" role="alert"></p>
+                <div class="flex gap-3 pt-2">
+                    <button type="button" onclick="closePinModal()" class="flex-1 rounded-xl bg-gray-100 py-2 text-sm text-gray-600">Cancelar</button>
+                    <button type="submit" class="flex-1 rounded-xl bg-brandTeal py-2 text-sm font-medium text-white">Generar y guardar PIN</button>
                 </div>
             </form>
         </div>
@@ -830,7 +841,6 @@
     </div>
 
     <script>
-        let nextWorkerId = 5;
         let nextLocationId = 4;
         let nextInventoryId = 5;
         let nextClientId = 3;
@@ -843,13 +853,8 @@
         let editingInventoryLocationId = null;
         let currentCalendarDate = new Date();
         let selectedDate = toDateKey(new Date());
-        const departments = ['Operaciones', 'Administración', 'Atención al Cliente'];
-        const workers = [
-            { id: 1, name: 'Ana Martínez', role: 'Coordinadora de operaciones', contact: 'ana.martinez@grupoada.com', department: 'Operaciones', locations: [{ id: 1, address: 'Comunidad El Bosque, zona norte' }], documents: [] },
-            { id: 2, name: 'Luis Herrera', role: 'Técnico de campo', contact: '+1 555 0102', department: 'Operaciones', locations: [], documents: [] },
-            { id: 3, name: 'María López', role: 'Analista administrativa', contact: 'maria.lopez@grupoada.com', department: 'Administración', locations: [{ id: 2, address: 'Oficina Central, avenida Principal 125' }], documents: [] },
-            { id: 4, name: 'Carlos Díaz', role: 'Asesor de servicio', contact: '+1 555 0104', department: 'Atención al Cliente', locations: [], documents: [] }
-        ];
+        const departments = ['limpieza', 'conserjería', 'jardinería'];
+        const workers = [];
         const inventoryLocations = [
             { id: 1, name: 'Almacén Central' },
             { id: 2, name: 'Depósito Norte' },
@@ -912,7 +917,6 @@
             if (tabId === 'inventory') renderInventory();
             if (tabId === 'archive') renderArchive();
             if (tabId === 'tasks') renderCalendar();
-            if (tabId === 'workers') loadManagedWorkers();
             if (tabId === 'security') loadAdminSecurityEvents();
             if (tabId === 'signing') loadSigningDocuments();
             setAdminMobileMenuOpen(false);
@@ -945,13 +949,16 @@
         function openWorkerModal(workerId = null) {
             editingWorkerId = workerId;
             const worker = workers.find(item => item.id === workerId);
-            document.getElementById('worker-modal-title').textContent = worker ? 'Editar trabajador' : 'Añadir trabajador';
-            document.querySelector('#worker-form button[type="submit"]').textContent = worker ? 'Guardar cambios' : 'Guardar trabajador';
+            document.getElementById('worker-modal-title').textContent = worker ? 'Editar trabajador' : 'Añadir trabajador y generar PIN';
+            document.querySelector('#worker-form button[type="submit"]').textContent = worker ? 'Guardar cambios' : 'Guardar y generar PIN';
+            document.getElementById('worker-role').required = !worker;
+            document.getElementById('worker-contact').required = !worker;
             renderDepartmentOptions(worker ? worker.department : '');
             if (worker) {
                 document.getElementById('worker-name').value = worker.name;
                 document.getElementById('worker-role').value = worker.role;
                 document.getElementById('worker-contact').value = worker.contact;
+                document.getElementById('worker-communities').value = worker.locations.map(location => location.address).join('\n');
             }
             clearFormError('worker-form-error');
             showModal('worker-modal');
@@ -963,6 +970,30 @@
             document.getElementById('worker-form').reset();
             clearFormError('worker-form-error');
             editingWorkerId = null;
+        }
+
+        function openPinModal() {
+            const select = document.getElementById('pin-worker-select');
+            select.replaceChildren();
+            workers.forEach(worker => {
+                const option = document.createElement('option');
+                option.value = String(worker.id);
+                option.textContent = worker.name;
+                select.appendChild(option);
+            });
+            clearFormError('pin-form-error');
+            showModal('pin-modal');
+            if (workers.length === 0) {
+                showFormError('pin-form-error', 'No hay trabajadores cargados. Inténtalo de nuevo cuando termine la carga.');
+            } else {
+                select.focus();
+            }
+        }
+
+        function closePinModal() {
+            hideModal('pin-modal');
+            document.getElementById('pin-form').reset();
+            clearFormError('pin-form-error');
         }
 
         function openWorkerDocumentsModal(workerId) {
@@ -1062,7 +1093,8 @@
             placeholder.disabled = true;
             placeholder.selected = !selectedDepartment;
             select.appendChild(placeholder);
-            departments.forEach(department => {
+            const availableDepartments = [...new Set([...departments, ...workers.map(worker => worker.department).filter(Boolean)])];
+            availableDepartments.forEach(department => {
                 const option = document.createElement('option');
                 option.value = department;
                 option.textContent = department;
@@ -1074,7 +1106,8 @@
         function renderOrganization() {
             const container = document.getElementById('department-list');
             container.replaceChildren();
-            departments.forEach(department => {
+            const organizationDepartments = [...new Set([...departments, ...workers.map(worker => worker.department).filter(Boolean)])];
+            organizationDepartments.forEach(department => {
                 const departmentWorkers = workers.filter(worker => worker.department === department);
                 const section = document.createElement('section');
                 section.className = 'rounded-2xl border border-gray-200 bg-brandLight/50 p-5';
@@ -1091,17 +1124,175 @@
 
                 const team = document.createElement('div');
                 team.className = 'mt-3 space-y-3';
-                if (departmentWorkers.length === 0) {
+                if (departmentWorkers.length === 0 && workers.length === 0) {
                     const empty = document.createElement('p');
                     empty.className = 'py-3 text-sm text-gray-500';
-                    empty.textContent = 'Aún no hay trabajadores en este departamento.';
+                    empty.textContent = 'Cargando trabajadores...';
                     team.appendChild(empty);
+                } else if (departmentWorkers.length === 0) {
+                    section.classList.add('hidden');
                 }
                 departmentWorkers.forEach(worker => team.appendChild(createWorkerCard(worker)));
                 section.append(heading, team);
                 container.appendChild(section);
             });
             document.getElementById('stat-workers').textContent = String(workers.length);
+        }
+
+        function normalizeWorkerRecord(record) {
+            return {
+                id: record.id,
+                name: record.display_name,
+                role: record.job_title || '',
+                contact: record.contact || '',
+                department: record.department || 'Sin asignar',
+                pin: record.pin || '',
+                pinVisible: false,
+                locations: (Array.isArray(record.communities) ? record.communities : [])
+                    .map((address, index) => ({ id: index + 1, address })),
+                documents: []
+            };
+        }
+
+        function normalizeSearchText(value) {
+            return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es');
+        }
+
+        function renderWorkerSearchResults(successMessage = '') {
+            const input = document.getElementById('structure-worker-search');
+            const results = document.getElementById('structure-worker-results');
+            if (!input || !results) return;
+            results.replaceChildren();
+            if (successMessage) {
+                const status = document.createElement('p');
+                status.className = 'rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700';
+                status.setAttribute('role', 'status');
+                status.textContent = successMessage;
+                results.appendChild(status);
+            }
+            const query = normalizeSearchText(input.value.trim());
+            if (!query) {
+                const prompt = document.createElement('p');
+                prompt.className = 'text-sm text-gray-500';
+                prompt.textContent = 'Escribe un nombre para consultar los datos y el PIN del trabajador.';
+                results.appendChild(prompt);
+                return;
+            }
+            const matches = workers.filter(worker => normalizeSearchText(worker.name).includes(query));
+            if (matches.length === 0) {
+                const empty = document.createElement('p');
+                empty.className = 'rounded-lg bg-gray-50 p-4 text-sm text-gray-500';
+                empty.textContent = 'No se encontraron trabajadores con ese nombre.';
+                results.appendChild(empty);
+                return;
+            }
+
+            matches.forEach(worker => {
+                const form = document.createElement('form');
+                form.className = 'grid gap-4 rounded-xl border border-gray-200 bg-brandLight/30 p-4 md:grid-cols-2';
+                const fields = [
+                    { key: 'name', label: 'Nombre del trabajador', value: worker.name, required: true, maxLength: 120 },
+                    { key: 'role', label: 'Cargo', value: worker.role, maxLength: 120 },
+                    { key: 'contact', label: 'Teléfono o correo', value: worker.contact, maxLength: 160 },
+                    { key: 'department', label: 'Departamento', value: worker.department, required: true, maxLength: 80 }
+                ];
+                const values = {};
+                fields.forEach(field => {
+                    const label = document.createElement('label');
+                    label.className = 'block text-sm font-medium text-gray-700';
+                    label.textContent = field.label;
+                    const inputField = document.createElement('input');
+                    inputField.type = 'text';
+                    inputField.value = field.value;
+                    inputField.maxLength = field.maxLength;
+                    inputField.required = Boolean(field.required);
+                    inputField.className = 'mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2';
+                    label.appendChild(inputField);
+                    form.appendChild(label);
+                    values[field.key] = inputField;
+                });
+
+                const communitiesLabel = document.createElement('label');
+                communitiesLabel.className = 'block text-sm font-medium text-gray-700 md:col-span-2';
+                communitiesLabel.textContent = 'Comunidades o zonas (una por línea)';
+                const communitiesField = document.createElement('textarea');
+                communitiesField.rows = 3;
+                communitiesField.maxLength = 2000;
+                communitiesField.value = worker.locations.map(location => location.address).join('\n');
+                communitiesField.className = 'mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2';
+                communitiesLabel.appendChild(communitiesField);
+                form.appendChild(communitiesLabel);
+
+                const pinGroup = document.createElement('div');
+                pinGroup.className = 'md:col-span-2';
+                const pinLabel = document.createElement('span');
+                pinLabel.className = 'block text-sm font-medium text-gray-700';
+                pinLabel.textContent = 'PIN de acceso';
+                const pinControls = document.createElement('div');
+                pinControls.className = 'mt-1 flex gap-2';
+                const pinField = document.createElement('input');
+                pinField.type = worker.pin && !worker.pinVisible ? 'password' : 'text';
+                pinField.value = worker.pin || '';
+                pinField.placeholder = worker.pin ? '' : 'Sin PIN asignado';
+                pinField.readOnly = true;
+                pinField.className = 'w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 font-mono tracking-widest';
+                const togglePin = document.createElement('button');
+                togglePin.type = 'button';
+                togglePin.disabled = !worker.pin;
+                togglePin.className = 'shrink-0 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-brandBlue disabled:cursor-not-allowed disabled:opacity-50';
+                togglePin.setAttribute('aria-label', worker.pinVisible ? 'Ocultar PIN' : 'Mostrar PIN');
+                togglePin.setAttribute('aria-pressed', String(worker.pinVisible));
+                togglePin.textContent = worker.pinVisible ? '🙈 Ocultar' : '👁 Mostrar';
+                togglePin.addEventListener('click', () => {
+                    worker.pinVisible = !worker.pinVisible;
+                    pinField.type = worker.pinVisible ? 'text' : 'password';
+                    togglePin.textContent = worker.pinVisible ? '🙈 Ocultar' : '👁 Mostrar';
+                    togglePin.setAttribute('aria-label', worker.pinVisible ? 'Ocultar PIN' : 'Mostrar PIN');
+                    togglePin.setAttribute('aria-pressed', String(worker.pinVisible));
+                });
+                pinControls.append(pinField, togglePin);
+                pinGroup.append(pinLabel, pinControls);
+                form.appendChild(pinGroup);
+
+                const error = document.createElement('p');
+                error.className = 'hidden rounded-lg bg-red-50 p-3 text-sm text-red-700 md:col-span-2';
+                error.setAttribute('role', 'alert');
+                const save = document.createElement('button');
+                save.type = 'submit';
+                save.className = 'rounded-xl bg-brandBlue px-4 py-2 font-semibold text-white hover:bg-blue-800 disabled:opacity-60 md:col-span-2 md:justify-self-start';
+                save.textContent = 'Guardar cambios';
+                form.append(error, save);
+                form.addEventListener('submit', async event => {
+                    event.preventDefault();
+                    save.disabled = true;
+                    error.classList.add('hidden');
+                    try {
+                        const payload = {
+                            name: values.name.value.trim(),
+                            job_title: values.role.value.trim(),
+                            contact: values.contact.value.trim(),
+                            department: values.department.value.trim(),
+                            communities: communitiesField.value.split(/\r?\n/).map(value => value.trim()).filter(Boolean)
+                        };
+                        const { worker: savedWorker } = await requestApi(`/api/admin/workers/${worker.id}`, {
+                            method: 'PUT',
+                            body: JSON.stringify(payload)
+                        });
+                        const index = workers.findIndex(item => item.id === worker.id);
+                        if (index >= 0) workers[index] = normalizeWorkerRecord(savedWorker);
+                        document.getElementById('structure-worker-search').value = savedWorker.display_name;
+                        renderOrganization();
+                        renderDashboard();
+                        renderWorkerSearchResults('Datos del trabajador guardados correctamente.');
+                    } catch (saveError) {
+                        error.textContent = saveError instanceof Error ? saveError.message : 'No se pudieron guardar los cambios.';
+                        error.classList.remove('hidden');
+                    } finally {
+                        save.disabled = false;
+                    }
+                });
+                results.appendChild(form);
+            });
         }
 
         function createWorkerCard(worker) {
@@ -1142,13 +1333,7 @@
             const label = document.createElement('p');
             label.className = 'text-xs font-semibold uppercase tracking-wide text-gray-500';
             label.textContent = 'Comunidades y zonas asignadas';
-            const addLocation = document.createElement('button');
-            addLocation.type = 'button';
-            addLocation.className = 'text-xs font-semibold text-brandBlue hover:underline';
-            addLocation.textContent = '+ Añadir';
-            addLocation.setAttribute('aria-label', `Asignar ubicación a ${worker.name}`);
-            addLocation.addEventListener('click', () => openLocationModal(worker.id));
-            locationHeading.append(label, addLocation);
+            locationHeading.append(label);
             locationSection.appendChild(locationHeading);
 
             const locations = document.createElement('ul');
@@ -1161,20 +1346,11 @@
             }
             worker.locations.forEach(location => {
                 const item = document.createElement('li');
-                item.className = 'flex items-start justify-between gap-2 text-sm text-gray-600';
+                item.className = 'flex items-start gap-2 text-sm text-gray-600';
                 const address = document.createElement('span');
                 address.className = 'flex-1';
                 address.textContent = `📍 ${location.address}`;
-                const remove = document.createElement('button');
-                remove.type = 'button';
-                remove.className = 'shrink-0 text-xs text-red-500 hover:underline';
-                remove.textContent = 'Quitar';
-                remove.setAttribute('aria-label', `Quitar ubicación de ${worker.name}`);
-                remove.addEventListener('click', () => {
-                    worker.locations = worker.locations.filter(item => item.id !== location.id);
-                    renderOrganization();
-                });
-                item.append(address, remove);
+                item.append(address);
                 locations.appendChild(item);
             });
             locationSection.appendChild(locations);
@@ -1686,23 +1862,70 @@
             renderCalendar();
         });
 
-        document.getElementById('worker-form').addEventListener('submit', event => {
+        document.getElementById('worker-form').addEventListener('submit', async event => {
             event.preventDefault();
             const name = document.getElementById('worker-name').value.trim();
             const role = document.getElementById('worker-role').value.trim();
             const contact = document.getElementById('worker-contact').value.trim();
             const department = document.getElementById('worker-department').value;
-            if (!name || !role || !contact || !departments.includes(department)) {
-                showFormError('worker-form-error', 'Completa todos los campos y selecciona un departamento válido.');
+            const communities = document.getElementById('worker-communities').value.split(/\r?\n/).map(value => value.trim()).filter(Boolean);
+            if (!name || !department || (!editingWorkerId && (!role || !contact))) {
+                showFormError('worker-form-error', 'Completa el nombre, cargo, contacto y departamento del trabajador.');
                 return;
             }
-            const existingWorker = workers.find(item => item.id === editingWorkerId);
-            if (existingWorker) Object.assign(existingWorker, { name, role, contact, department });
-            else workers.push({ id: nextWorkerId++, name, role, contact, department, locations: [], documents: [] });
-            closeWorkerModal();
-            renderOrganization();
-            renderDashboard();
+            const submit = document.querySelector('#worker-form button[type="submit"]');
+            const wasEditing = Boolean(editingWorkerId);
+            submit.disabled = true;
+            clearFormError('worker-form-error');
+            try {
+                const payload = { name, job_title: role, contact, department, communities };
+                const response = editingWorkerId
+                    ? await requestApi(`/api/admin/workers/${editingWorkerId}`, { method: 'PUT', body: JSON.stringify(payload) })
+                    : await requestApi('/api/admin/workers', { method: 'POST', body: JSON.stringify(payload) });
+                const savedWorker = normalizeWorkerRecord(response.worker);
+                const existingIndex = workers.findIndex(item => item.id === savedWorker.id);
+                if (existingIndex >= 0) workers[existingIndex] = savedWorker;
+                else workers.push(savedWorker);
+                closeWorkerModal();
+                document.getElementById('structure-worker-search').value = savedWorker.name;
+                renderOrganization();
+                renderDashboard();
+                renderWorkerSearchResults(wasEditing ? 'Datos del trabajador guardados correctamente.' : 'Trabajador creado. Su PIN se muestra en el resultado.');
+            } catch (error) {
+                showFormError('worker-form-error', error instanceof Error ? error.message : 'No se pudo guardar el trabajador.');
+            } finally {
+                submit.disabled = false;
+            }
         });
+        document.getElementById('pin-form').addEventListener('submit', async event => {
+            event.preventDefault();
+            const worker = workers.find(item => item.id === Number(document.getElementById('pin-worker-select').value));
+            if (!worker) {
+                showFormError('pin-form-error', 'Selecciona un trabajador válido.');
+                return;
+            }
+            const submit = document.querySelector('#pin-form button[type="submit"]');
+            submit.disabled = true;
+            clearFormError('pin-form-error');
+            try {
+                const { worker: savedWorker } = await requestApi(`/api/admin/workers/${worker.id}/pin`, {
+                    method: 'POST',
+                    body: JSON.stringify({})
+                });
+                const index = workers.findIndex(item => item.id === worker.id);
+                if (index >= 0) workers[index] = normalizeWorkerRecord(savedWorker);
+                closePinModal();
+                document.getElementById('structure-worker-search').value = savedWorker.display_name;
+                renderOrganization();
+                renderDashboard();
+                renderWorkerSearchResults('PIN nuevo generado y guardado. Usa el botón del ojo para consultarlo.');
+            } catch (error) {
+                showFormError('pin-form-error', error instanceof Error ? error.message : 'No se pudo generar el PIN.');
+            } finally {
+                submit.disabled = false;
+            }
+        });
+        document.getElementById('structure-worker-search').addEventListener('input', () => renderWorkerSearchResults());
 
         document.getElementById('department-form').addEventListener('submit', event => {
             event.preventDefault();
@@ -1723,15 +1946,7 @@
 
         document.getElementById('location-form').addEventListener('submit', event => {
             event.preventDefault();
-            const address = document.getElementById('location-address').value.trim();
-            const worker = workers.find(item => item.id === selectedWorkerId);
-            if (!address || !worker) {
-                showFormError('location-form-error', 'Ingresa una dirección y verifica el trabajador seleccionado.');
-                return;
-            }
-            worker.locations.push({ id: nextLocationId++, address });
-            closeLocationModal();
-            renderOrganization();
+            showFormError('location-form-error', 'Edita las comunidades desde los datos del trabajador en Estructura.');
         });
 
         document.getElementById('inventory-form').addEventListener('submit', event => {
@@ -1868,6 +2083,7 @@
             modal.addEventListener('click', event => {
                 if (event.target !== modal) return;
                 if (modal.id === 'worker-modal') closeWorkerModal();
+                if (modal.id === 'pin-modal') closePinModal();
                 if (modal.id === 'department-modal') closeDepartmentModal();
                 if (modal.id === 'location-modal') closeLocationModal();
                 if (modal.id === 'inventory-modal') closeInventoryModal();
@@ -1883,6 +2099,7 @@
         document.addEventListener('keydown', event => {
             if (event.key !== 'Escape') return;
             if (!document.getElementById('worker-modal').classList.contains('hidden')) closeWorkerModal();
+            if (!document.getElementById('pin-modal').classList.contains('hidden')) closePinModal();
             if (!document.getElementById('department-modal').classList.contains('hidden')) closeDepartmentModal();
             if (!document.getElementById('location-modal').classList.contains('hidden')) closeLocationModal();
             if (!document.getElementById('inventory-modal').classList.contains('hidden')) closeInventoryModal();
@@ -2678,6 +2895,7 @@
             adminApp.style.display = 'flex';
             document.getElementById('admin-user-name').textContent = user.display_name;
             document.getElementById('admin-user-login').textContent = user.username;
+            loadOrganizationWorkers();
             loadAttendanceReports();
             if (!attendanceMap && window.L) {
                 attendanceMap = L.map('attendance-map').setView([40.4168, -3.7038], 6);
@@ -2705,85 +2923,21 @@
             }
         }
 
-        function showWorkersManagementMessage(message, isError = false) {
-            const workersManagementMessage = document.getElementById('workers-management-message');
-            workersManagementMessage.textContent = message;
-            workersManagementMessage.className = `p-5 text-sm ${isError ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`;
-        }
-
-        async function loadManagedWorkers() {
-            const table = document.getElementById('managed-workers-table');
-            const message = document.getElementById('workers-management-message');
-            if (table.childElementCount === 0) {
-                message.textContent = 'Cargando operarios...';
-                message.className = 'p-5 text-sm text-gray-500';
-            }
+        async function loadOrganizationWorkers() {
+            const results = document.getElementById('structure-worker-results');
             try {
-                const { workers } = await requestApi('/api/admin/workers');
-                table.replaceChildren();
-                workers.forEach(worker => {
-                    const row = document.createElement('tr');
-                    const pin = document.createElement('td');
-                    pin.className = 'p-4 font-mono font-bold tracking-widest text-brandBlue';
-                    pin.textContent = worker.pin;
-                    const department = document.createElement('td');
-                    department.className = 'p-4 capitalize text-gray-600';
-                    department.textContent = worker.department;
-                    const firstNameCell = document.createElement('td');
-                    firstNameCell.className = 'p-3';
-                    const firstName = document.createElement('input');
-                    firstName.type = 'text';
-                    firstName.maxLength = 60;
-                    firstName.required = true;
-                    firstName.value = worker.first_name;
-                    firstName.setAttribute('aria-label', `Nombre de operario con PIN ${worker.pin}`);
-                    firstName.className = 'w-full rounded-lg border border-gray-300 px-3 py-2';
-                    firstNameCell.appendChild(firstName);
-                    const lastNameCell = document.createElement('td');
-                    lastNameCell.className = 'p-3';
-                    const lastName = document.createElement('input');
-                    lastName.type = 'text';
-                    lastName.maxLength = 60;
-                    lastName.required = true;
-                    lastName.value = worker.last_name;
-                    lastName.setAttribute('aria-label', `Apellido de operario con PIN ${worker.pin}`);
-                    lastName.className = 'w-full rounded-lg border border-gray-300 px-3 py-2';
-                    lastNameCell.appendChild(lastName);
-                    const actionCell = document.createElement('td');
-                    actionCell.className = 'p-3';
-                    const saveButton = document.createElement('button');
-                    saveButton.type = 'button';
-                    saveButton.textContent = 'Guardar';
-                    saveButton.className = 'rounded-lg bg-brandBlue px-4 py-2 font-semibold text-white hover:bg-blue-800 disabled:opacity-50';
-                    saveButton.addEventListener('click', async () => {
-                        saveButton.disabled = true;
-                        try {
-                            await requestApi(`/api/admin/workers/${worker.id}`, {
-                                method: 'PUT',
-                                body: JSON.stringify({
-                                    first_name: firstName.value,
-                                    last_name: lastName.value
-                                })
-                            });
-                            showWorkersManagementMessage(`Cambios guardados para el PIN ${worker.pin}.`);
-                            refreshActiveWorkers();
-                        } catch (error) {
-                            showWorkersManagementMessage(error.message, true);
-                        } finally {
-                            saveButton.disabled = false;
-                        }
-                    });
-                    actionCell.appendChild(saveButton);
-                    row.append(pin, department, firstNameCell, lastNameCell, actionCell);
-                    table.appendChild(row);
-                });
-                if (workers.length === 0) {
-                    showWorkersManagementMessage('No hay operarios configurados.', true);
-                } else {
-                    message.className = 'hidden';
-                }
+                const response = await requestApi('/api/admin/workers');
+                workers.splice(0, workers.length, ...response.workers.map(normalizeWorkerRecord));
+                renderOrganization();
+                renderDashboard();
+                renderWorkerSearchResults();
             } catch (error) {
-                showWorkersManagementMessage(error.message, true);
+                results.replaceChildren();
+                const message = document.createElement('p');
+                message.className = 'rounded-lg bg-red-50 p-4 text-sm text-red-700';
+                message.setAttribute('role', 'alert');
+                message.textContent = error instanceof Error ? error.message : 'No se pudieron cargar los trabajadores.';
+                results.appendChild(message);
             }
         }
 

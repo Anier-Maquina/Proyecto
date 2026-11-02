@@ -162,8 +162,9 @@ class AttendanceServerTests(unittest.TestCase):
         response, payload = self.request("/api/admin/workers")
         self.assertEqual(response.status, 200)
         workers = payload["workers"]
-        self.assertEqual(len(workers), 30)
-        self.assertEqual(len({worker["pin"] for worker in workers}), 30)
+        pinned_workers = [worker for worker in workers if worker["pin"]]
+        self.assertEqual(len(pinned_workers), 30)
+        self.assertEqual(len({worker["pin"] for worker in pinned_workers}), 30)
         self.assertEqual(
             {department: sum(worker["department"] == department for worker in workers) for department in (
                 "limpieza", "conserjería", "jardinería"
@@ -229,6 +230,99 @@ class AttendanceServerTests(unittest.TestCase):
         self.assertEqual(active["workers"][0]["name"], "Lucía García")
         self.assertEqual(active["workers"][0]["department"], "limpieza")
         self.opener = admin_opener
+
+    def test_worker_structure_profiles_and_unique_pin_management(self):
+        self.login_pin("administrador", "7804")
+        response, created = self.request(
+            "/api/admin/workers",
+            {
+                "name": "Nuria Valle",
+                "job_title": "Coordinadora",
+                "contact": "nuria@example.com",
+                "department": "limpieza",
+                "communities": ["Comunidad Norte", "Residencial Centro"],
+            },
+            method="POST",
+        )
+        self.assertEqual(response.status, 201)
+        worker = created["worker"]
+        worker_id = worker["id"]
+        created_pin = worker["pin"]
+        self.assertRegex(created_pin, r"^\d{4}$")
+        with server.database() as connection:
+            existing_pins = {
+                row["pin"]
+                for row in connection.execute(
+                    "SELECT pin FROM users WHERE pin IS NOT NULL AND id <> ?",
+                    (worker_id,),
+                ).fetchall()
+            }
+        self.assertNotIn(created_pin, existing_pins)
+
+        response, duplicate = self.request(
+            "/api/admin/workers",
+            {
+                "name": "nuria valle",
+                "job_title": "",
+                "contact": "",
+                "department": "limpieza",
+                "communities": [],
+            },
+            method="POST",
+        )
+        self.assertEqual(response.status, 409)
+        self.assertIn("Ya existe", duplicate["error"])
+
+        response, saved = self.request(
+            f"/api/admin/workers/{worker_id}",
+            {
+                "name": "Nuria Valle García",
+                "job_title": "Supervisora",
+                "contact": "+34 600 123 456",
+                "department": "jardinería",
+                "communities": ["Parque Central"],
+            },
+            method="PUT",
+        )
+        self.assertEqual(response.status, 200)
+        self.assertEqual(saved["worker"]["display_name"], "Nuria Valle García")
+        self.assertEqual(saved["worker"]["job_title"], "Supervisora")
+        self.assertEqual(saved["worker"]["contact"], "+34 600 123 456")
+        self.assertEqual(saved["worker"]["communities"], ["Parque Central"])
+
+        response, listing = self.request("/api/admin/workers")
+        self.assertEqual(response.status, 200)
+        listed = next(item for item in listing["workers"] if item["id"] == worker_id)
+        self.assertEqual(listed["pin"], created_pin)
+        self.assertEqual(listed["department"], "jardinería")
+        self.assertEqual(listed["communities"], ["Parque Central"])
+
+        response, regenerated = self.request(
+            f"/api/admin/workers/{worker_id}/pin",
+            {},
+            method="POST",
+        )
+        self.assertEqual(response.status, 200)
+        regenerated_pin = regenerated["worker"]["pin"]
+        self.assertRegex(regenerated_pin, r"^\d{4}$")
+        self.assertNotEqual(regenerated_pin, created_pin)
+        with server.database() as connection:
+            duplicate_pin_count = connection.execute(
+                "SELECT COUNT(*) FROM users WHERE pin = ?",
+                (regenerated_pin,),
+            ).fetchone()[0]
+        self.assertEqual(duplicate_pin_count, 1)
+
+        admin_opener = self.opener
+        self.opener = build_opener(HTTPCookieProcessor(CookieJar()))
+        response, _ = self.request("/api/login", {"username": "Nuria Valle García", "pin": created_pin})
+        self.assertEqual(response.status, 401)
+        response, login = self.request("/api/login", {"username": "Nuria Valle García", "pin": regenerated_pin})
+        self.assertEqual(response.status, 200)
+        self.assertEqual(login["user"]["display_name"], "Nuria Valle García")
+        self.opener = admin_opener
+        with server.database() as connection:
+            connection.execute("DELETE FROM users WHERE id = ?", (worker_id,))
 
     def test_login_requires_exact_admin_pin_and_limits_failures(self):
         response, _ = self.request("/api/login", {"username": "Administrador", "pin": "7804"})

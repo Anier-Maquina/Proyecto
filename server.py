@@ -579,6 +579,14 @@ def initialize_database():
             )
             """,
             """
+            CREATE TABLE IF NOT EXISTS worker_profiles (
+                user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+                job_title TEXT NOT NULL DEFAULT '',
+                contact TEXT NOT NULL DEFAULT '',
+                communities_json TEXT NOT NULL DEFAULT '[]'
+            )
+            """,
+            """
             CREATE INDEX IF NOT EXISTS attendance_user_time
                 ON attendance_events(user_id, recorded_at DESC)
             """,
@@ -760,6 +768,33 @@ def validate_ip_address(value):
         return str(ipaddress.ip_address(value.strip()))
     except ValueError:
         raise ValueError("Indica una dirección IPv4 o IPv6 válida.") from None
+
+
+def validate_worker_profile(department, job_title, contact, communities):
+    if not isinstance(department, str) or not department.strip() or len(department.strip()) > 80:
+        return "Indica un departamento válido (máximo 80 caracteres)."
+    if not isinstance(job_title, str) or len(job_title.strip()) > 120:
+        return "El cargo no puede superar 120 caracteres."
+    if not isinstance(contact, str) or len(contact.strip()) > 160:
+        return "El teléfono o correo no puede superar 160 caracteres."
+    if not isinstance(communities, list) or len(communities) > 40:
+        return "Indica una lista válida de comunidades (máximo 40)."
+    if any(not isinstance(community, str) or not community.strip() or len(community.strip()) > 240 for community in communities):
+        return "Cada comunidad debe tener entre 1 y 240 caracteres."
+    normalized_communities = [community.strip() for community in communities]
+    if len({community.casefold() for community in normalized_communities}) != len(normalized_communities):
+        return "No repitas una comunidad en el mismo trabajador."
+    communities[:] = normalized_communities
+    return None
+
+
+def generate_available_worker_pin(connection):
+    used_pins = {
+        row["pin"]
+        for row in connection.execute("SELECT pin FROM users WHERE pin IS NOT NULL").fetchall()
+    }
+    available_pins = [f"{pin:04d}" for pin in range(10_000) if f"{pin:04d}" not in used_pins]
+    return secrets.choice(available_pins) if available_pins else None
 
 
 def parse_location(payload):
@@ -1210,17 +1245,30 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
             with database() as connection:
                 rows = connection.execute(
                     """
-                    SELECT id, first_name, last_name, department, pin
+                    SELECT u.id, u.first_name, u.last_name, u.display_name,
+                           u.department, u.pin,
+                           COALESCE(p.job_title, '') AS job_title,
+                           COALESCE(p.contact, '') AS contact,
+                           COALESCE(p.communities_json, '[]') AS communities_json
                     FROM users
-                    WHERE role = 'worker' AND pin IS NOT NULL
-                    ORDER BY CASE department
+                    AS u LEFT JOIN worker_profiles p ON p.user_id = u.id
+                    WHERE u.role = 'worker'
+                    ORDER BY CASE u.department
                         WHEN 'limpieza' THEN 1
                         WHEN 'conserjería' THEN 2
                         WHEN 'jardinería' THEN 3
-                        ELSE 4 END, id
+                        ELSE 4 END, u.id
                     """
                 ).fetchall()
-            self.send_json(200, {"workers": [dict(row) for row in rows]})
+            workers = []
+            for row in rows:
+                worker = dict(row)
+                try:
+                    worker["communities"] = json.loads(worker.pop("communities_json"))
+                except (TypeError, json.JSONDecodeError):
+                    raise RuntimeError(f"El perfil del trabajador {worker['id']} contiene comunidades no válidas.")
+                workers.append(worker)
+            self.send_json(200, {"workers": workers})
             return
         if path == "/api/attendance/mine":
             user = self.require_role("worker")
@@ -1313,44 +1361,104 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
         if not match:
             self.send_json(404, {"error": "Ruta no encontrada."})
             return
-        if not self.require_role("admin"):
+        admin = self.require_role("admin")
+        if not admin:
             return
         try:
             payload = self.read_json()
         except ValueError as error:
             self.send_json(400, {"error": str(error)})
             return
-        first_name = payload.get("first_name")
-        last_name = payload.get("last_name")
-        if (
-            not isinstance(first_name, str)
-            or not isinstance(last_name, str)
-            or not first_name.strip()
-            or not last_name.strip()
-            or len(first_name.strip()) > 60
-            or len(last_name.strip()) > 60
-        ):
-            self.send_json(400, {"error": "Indica un nombre y apellido válidos (máximo 60 caracteres cada uno)."})
-            return
-        first_name = first_name.strip()
-        last_name = last_name.strip()
-        with database() as connection:
-            cursor = connection.execute(
-                """
-                UPDATE users
-                SET first_name = ?, last_name = ?, display_name = ?
-                WHERE id = ? AND role = 'worker' AND pin IS NOT NULL
-                """,
-                (first_name, last_name, f"{first_name} {last_name}", int(match.group(1))),
-            )
-            if cursor.rowcount == 0:
-                self.send_json(404, {"error": "No se encontró el operario solicitado."})
+
+        name = payload.get("name")
+        if name is None:
+            first_name = payload.get("first_name")
+            last_name = payload.get("last_name")
+            if not isinstance(first_name, str) or not isinstance(last_name, str):
+                self.send_json(400, {"error": "Indica el nombre completo del trabajador."})
                 return
-            row = connection.execute(
-                "SELECT id, first_name, last_name, display_name, department, pin FROM users WHERE id = ?",
-                (int(match.group(1)),),
-            ).fetchone()
-        self.send_json(200, {"worker": dict(row)})
+            name = f"{first_name.strip()} {last_name.strip()}".strip()
+        if not isinstance(name, str) or not name.strip() or len(name.strip()) > 120:
+            self.send_json(400, {"error": "Indica un nombre válido (máximo 120 caracteres)."})
+            return
+        name = " ".join(name.split())
+        first_name, _, last_name = name.partition(" ")
+        if len(first_name) > 60 or len(last_name) > 60:
+            self.send_json(400, {"error": "El nombre y los apellidos no pueden superar 60 caracteres cada uno."})
+            return
+
+        worker_id = int(match.group(1))
+        try:
+            with database() as connection:
+                begin_write_transaction(connection, admin["id"])
+                existing = connection.execute(
+                    """
+                    SELECT u.department, u.pin,
+                           COALESCE(p.job_title, '') AS job_title,
+                           COALESCE(p.contact, '') AS contact,
+                           COALESCE(p.communities_json, '[]') AS communities_json
+                    FROM users u LEFT JOIN worker_profiles p ON p.user_id = u.id
+                    WHERE u.id = ? AND u.role = 'worker'
+                    """,
+                    (worker_id,),
+                ).fetchone()
+                if not existing:
+                    self.send_json(404, {"error": "No se encontró el trabajador solicitado."})
+                    return
+
+                department = payload.get("department", existing["department"] or "Sin asignar")
+                job_title = payload.get("job_title", existing["job_title"])
+                contact = payload.get("contact", existing["contact"])
+                communities = payload.get("communities")
+                if communities is None:
+                    communities = json.loads(existing["communities_json"])
+                validation_error = validate_worker_profile(department, job_title, contact, communities)
+                if validation_error:
+                    self.send_json(400, {"error": validation_error})
+                    return
+
+                duplicate = connection.execute(
+                    "SELECT id FROM users WHERE role = 'worker' AND LOWER(display_name) = LOWER(?) AND id <> ?",
+                    (name, worker_id),
+                ).fetchone()
+                if duplicate:
+                    self.send_json(409, {"error": "Ya existe otro trabajador con ese nombre."})
+                    return
+
+                connection.execute(
+                    """
+                    UPDATE users
+                    SET first_name = ?, last_name = ?, display_name = ?, department = ?
+                    WHERE id = ? AND role = 'worker'
+                    """,
+                    (first_name, last_name, name, department.strip(), worker_id),
+                )
+                connection.execute(
+                    """
+                    INSERT INTO worker_profiles (user_id, job_title, contact, communities_json)
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT(user_id) DO UPDATE SET
+                        job_title = excluded.job_title,
+                        contact = excluded.contact,
+                        communities_json = excluded.communities_json
+                    """,
+                    (worker_id, job_title.strip(), contact.strip(), json.dumps(communities, ensure_ascii=False)),
+                )
+                row = connection.execute(
+                    """
+                    SELECT u.id, u.first_name, u.last_name, u.display_name,
+                           u.department, u.pin, p.job_title, p.contact, p.communities_json
+                    FROM users u JOIN worker_profiles p ON p.user_id = u.id
+                    WHERE u.id = ?
+                    """,
+                    (worker_id,),
+                ).fetchone()
+            worker = dict(row)
+            worker["communities"] = json.loads(worker.pop("communities_json"))
+        except DATABASE_ERRORS:
+            self.send_json(500, {"error": "No se pudo guardar el perfil del trabajador."})
+            return
+        self.send_json(200, {"worker": worker})
 
     def do_POST(self):
         path = urlparse(self.path).path
@@ -1363,6 +1471,144 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
             payload = self.read_json(max_bytes=max_bytes)
         except ValueError as error:
             self.send_json(400, {"error": str(error)})
+            return
+
+        if path == "/api/admin/workers":
+            admin = self.require_role("admin")
+            if not admin:
+                return
+            name = payload.get("name")
+            if not isinstance(name, str) or not name.strip() or len(name.strip()) > 120:
+                self.send_json(400, {"error": "Indica un nombre válido (máximo 120 caracteres)."})
+                return
+            name = " ".join(name.split())
+            first_name, _, last_name = name.partition(" ")
+            if len(first_name) > 60 or len(last_name) > 60:
+                self.send_json(400, {"error": "El nombre y los apellidos no pueden superar 60 caracteres cada uno."})
+                return
+            department = payload.get("department")
+            job_title = payload.get("job_title", "")
+            contact = payload.get("contact", "")
+            communities = payload.get("communities", [])
+            validation_error = validate_worker_profile(department, job_title, contact, communities)
+            if validation_error:
+                self.send_json(400, {"error": validation_error})
+                return
+
+            try:
+                with database() as connection:
+                    begin_write_transaction(connection, admin["id"])
+                    duplicate = connection.execute(
+                        "SELECT id FROM users WHERE role = 'worker' AND LOWER(display_name) = LOWER(?)",
+                        (name,),
+                    ).fetchone()
+                    if duplicate:
+                        self.send_json(409, {"error": "Ya existe un trabajador con ese nombre."})
+                        return
+
+                    pin = generate_available_worker_pin(connection)
+                    if pin is None:
+                        self.send_json(409, {"error": "No quedan PINs disponibles de cuatro dígitos."})
+                        return
+                    username = f"ada-worker-{secrets.token_hex(12)}"
+                    connection.execute(
+                        """
+                        INSERT INTO users
+                            (username, display_name, password_hash, role, created_at,
+                             first_name, last_name, department, pin)
+                        VALUES (?, ?, ?, 'worker', ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            username,
+                            name,
+                            hash_password(pin),
+                            utc_now(),
+                            first_name,
+                            last_name,
+                            department.strip(),
+                            pin,
+                        ),
+                    )
+                    worker_id = connection.execute(
+                        "SELECT id FROM users WHERE username = ?",
+                        (username,),
+                    ).fetchone()["id"]
+                    connection.execute(
+                        """
+                        INSERT INTO worker_profiles (user_id, job_title, contact, communities_json)
+                        VALUES (?, ?, ?, ?)
+                        """,
+                        (worker_id, job_title.strip(), contact.strip(), json.dumps(communities, ensure_ascii=False)),
+                    )
+                    row = connection.execute(
+                        """
+                        SELECT u.id, u.first_name, u.last_name, u.display_name,
+                               u.department, u.pin, p.job_title, p.contact, p.communities_json
+                        FROM users u JOIN worker_profiles p ON p.user_id = u.id
+                        WHERE u.id = ?
+                        """,
+                        (worker_id,),
+                    ).fetchone()
+                worker = dict(row)
+                worker["communities"] = json.loads(worker.pop("communities_json"))
+            except DATABASE_INTEGRITY_ERRORS:
+                self.send_json(409, {"error": "No se pudo asignar un PIN único. Inténtalo de nuevo."})
+                return
+            except DATABASE_ERRORS:
+                self.send_json(500, {"error": "No se pudo crear el trabajador."})
+                return
+            self.send_json(201, {"worker": worker})
+            return
+
+        pin_match = re.fullmatch(r"/api/admin/workers/(\d+)/pin", path)
+        if pin_match:
+            admin = self.require_role("admin")
+            if not admin:
+                return
+            try:
+                with database() as connection:
+                    begin_write_transaction(connection, admin["id"])
+                    worker_id = int(pin_match.group(1))
+                    existing = connection.execute(
+                        "SELECT id FROM users WHERE id = ? AND role = 'worker'",
+                        (worker_id,),
+                    ).fetchone()
+                    if not existing:
+                        self.send_json(404, {"error": "No se encontró el trabajador solicitado."})
+                        return
+                    pin = generate_available_worker_pin(connection)
+                    if pin is None:
+                        self.send_json(409, {"error": "No quedan PINs disponibles de cuatro dígitos."})
+                        return
+                    connection.execute(
+                        """
+                        UPDATE users SET pin = ?, password_hash = ?
+                        WHERE id = ? AND role = 'worker'
+                        """,
+                        (pin, hash_password(pin), worker_id),
+                    )
+                    connection.execute("DELETE FROM sessions WHERE user_id = ?", (worker_id,))
+                    row = connection.execute(
+                        """
+                        SELECT u.id, u.first_name, u.last_name, u.display_name,
+                               u.department, u.pin,
+                               COALESCE(p.job_title, '') AS job_title,
+                               COALESCE(p.contact, '') AS contact,
+                               COALESCE(p.communities_json, '[]') AS communities_json
+                        FROM users u LEFT JOIN worker_profiles p ON p.user_id = u.id
+                        WHERE u.id = ?
+                        """,
+                        (worker_id,),
+                    ).fetchone()
+                worker = dict(row)
+                worker["communities"] = json.loads(worker.pop("communities_json"))
+            except DATABASE_INTEGRITY_ERRORS:
+                self.send_json(409, {"error": "No se pudo asignar un PIN único. Inténtalo de nuevo."})
+                return
+            except DATABASE_ERRORS:
+                self.send_json(500, {"error": "No se pudo generar el PIN del trabajador."})
+                return
+            self.send_json(200, {"worker": worker})
             return
 
         if path in ("/api/login", "/api/mobile/login"):

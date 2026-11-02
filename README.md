@@ -69,9 +69,9 @@ PINs iniciales:
 | Conserjería | `5201`–`5210` |
 | Jardinería | `6301`–`6310` |
 
-Los nombres iniciales son marcadores editables. Desde **Operarios y PINs**, el administrador puede ver los 30 PINs y actualizar el nombre y apellido de cada persona. Los cambios quedan en SQLite y se reflejan en las sesiones nuevas y en el panel de operarios activos. El inicio de sesión limita los intentos fallidos por dirección IP.
+Los nombres iniciales son marcadores editables. Desde **Estructura Empresa**, el administrador puede buscar trabajadores, consultar y editar nombre, cargo, contacto, departamento y comunidades asignadas. El PIN permanece oculto hasta pulsar el botón del ojo. **Generar PIN** asigna un PIN aleatorio de cuatro cifras que no esté en uso al trabajador elegido; **Añadir trabajador** crea una cuenta nueva con otro PIN único. Los perfiles y cambios quedan guardados en SQLite y los nuevos nombres se reflejan en el fichaje y en el panel de operarios activos. Cambiar el PIN revoca las sesiones anteriores de ese trabajador. El inicio de sesión limita los intentos fallidos por dirección IP.
 
-**Seguridad:** no publiques esta lista de PINs. El PIN administrativo solicitado `7804` es una credencial fija en esta versión. Protege el acceso al archivo `Almacenamiento/control_horario.sqlite3`, ya que la pantalla de gestión debe poder mostrar los PINs. El límite de intentos reduce la adivinación, pero un PIN de cuatro dígitos no sustituye a una contraseña robusta.
+**Seguridad:** no publiques esta lista de PINs. El PIN administrativo solicitado `7804` es una credencial fija en esta versión. Protege el acceso al archivo `Almacenamiento/control_horario.sqlite3`, ya que la gestión de Estructura permite a la administración consultar los PINs. El límite de intentos reduce la adivinación, pero un PIN de cuatro dígitos no sustituye a una contraseña robusta.
 
 La aplicación dirige al personal a las vistas según su rol. Las rutas y las API comprueban la sesión y el rol en el servidor. El login por PIN compara exactamente el nombre mostrado y el PIN asignado; no acepta el nombre de un departamento como identidad ni el inicio de sesión heredado por contraseña.
 
