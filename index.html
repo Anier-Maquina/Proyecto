@@ -489,6 +489,72 @@
                         </div>
                         <p id="clients-empty" class="hidden p-6 text-center text-sm text-gray-500">No hay clientes que coincidan con la búsqueda.</p>
                     </section>
+                    <section class="rounded-2xl border border-brandTeal/20 bg-white p-6 shadow-sm" aria-labelledby="budget-calculator-heading">
+                        <div class="flex flex-col gap-4 border-b border-gray-100 pb-5 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <h3 id="budget-calculator-heading" class="text-lg font-bold text-brandDark">Calculador orientativo de presupuestos</h3>
+                                <p class="mt-1 text-sm text-gray-500">Consulta una estimación rápida según el servicio y sus características.</p>
+                            </div>
+                            <button type="button" disabled title="Disponible cuando se publique una versión pública del calculador." class="cursor-not-allowed rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-400" aria-describedby="budget-calculator-sharing-note">Compartir (próximamente)</button>
+                        </div>
+                        <div class="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
+                            <label for="budget-service" class="text-sm font-semibold text-gray-700">Tipo de servicio
+                                <select id="budget-service" class="mt-1 block w-full rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brandBlue">
+                                    <option value="hours">Limpieza puntual por horas para comunidades</option>
+                                    <option value="gardening">Jardinería</option>
+                                    <option value="post-work">Limpieza integral post-obra</option>
+                                    <option value="monthly">Limpieza mensual de comunidades</option>
+                                </select>
+                            </label>
+                            <div id="budget-panel-hours" class="grid grid-cols-1 gap-4 sm:grid-cols-2" data-budget-panel="hours">
+                                <label for="budget-hours" class="text-sm font-semibold text-gray-700">Horas por visita (mínimo 3)
+                                    <input id="budget-hours" type="number" min="3" step="0.5" value="3" class="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brandBlue">
+                                </label>
+                                <label for="budget-visits" class="text-sm font-semibold text-gray-700">Número de visitas
+                                    <input id="budget-visits" type="number" min="1" step="1" value="1" class="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brandBlue">
+                                </label>
+                            </div>
+                            <div id="budget-panel-gardening" class="hidden" data-budget-panel="gardening">
+                                <label for="budget-gardening-price" class="text-sm font-semibold text-gray-700">Importe estimado de jardinería (mínimo 150 €)
+                                    <div class="relative mt-1">
+                                        <input id="budget-gardening-price" type="number" min="150" step="25" value="150" class="block w-full rounded-xl border border-gray-300 px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-brandBlue">
+                                        <span class="pointer-events-none absolute inset-y-0 right-4 flex items-center text-gray-500">€</span>
+                                    </div>
+                                </label>
+                            </div>
+                            <div id="budget-panel-post-work" class="hidden" data-budget-panel="post-work">
+                                <label for="budget-post-work-level" class="text-sm font-semibold text-gray-700">Nivel de limpieza
+                                    <select id="budget-post-work-level" class="mt-1 block w-full rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brandBlue">
+                                        <option value="250">Básica — 250 €</option>
+                                        <option value="300">Estándar — 300 €</option>
+                                        <option value="350">Intensiva — 350 €</option>
+                                    </select>
+                                </label>
+                            </div>
+                            <div id="budget-panel-monthly" class="hidden" data-budget-panel="monthly">
+                                <label for="budget-monthly-days" class="text-sm font-semibold text-gray-700">Días de servicio por semana
+                                    <select id="budget-monthly-days" class="mt-1 block w-full rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brandBlue">
+                                        <option value="1">1 día/semana — 170 €/mes</option>
+                                        <option value="2">2 días/semana — 310 €/mes</option>
+                                        <option value="3">3 días/semana — 430 €/mes</option>
+                                        <option value="4">4 días/semana — 540 €/mes</option>
+                                        <option value="5">5 días/semana — 620 €/mes</option>
+                                    </select>
+                                </label>
+                            </div>
+                        </div>
+                        <p id="budget-calculator-sharing-note" class="mt-3 text-xs text-gray-500">El calculador está disponible solo en el panel. El enlace para compartir se habilitará al publicar una versión pública.</p>
+                        <p id="budget-calculator-status" class="mt-4 hidden rounded-xl bg-red-50 p-3 text-sm text-red-700" role="alert"></p>
+                        <div class="mt-5 rounded-2xl bg-brandLight p-5" aria-live="polite" aria-label="Desglose del presupuesto estimado">
+                            <div class="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+                                <div><p class="text-gray-500">Subtotal</p><p id="budget-subtotal" class="mt-1 text-lg font-bold text-brandDark">—</p></div>
+                                <div><p class="text-gray-500">IVA (21 %)</p><p id="budget-vat" class="mt-1 text-lg font-bold text-brandDark">—</p></div>
+                                <div><p class="text-gray-500">Total estimado</p><p id="budget-total" class="mt-1 text-xl font-bold text-brandBlue">—</p></div>
+                            </div>
+                            <p id="budget-calculator-period" class="mt-3 text-xs text-gray-500"></p>
+                        </div>
+                        <p class="mt-3 text-xs text-gray-500">Estimación orientativa, no vinculante. El presupuesto definitivo puede variar según las características y necesidades del servicio.</p>
+                    </section>
                     <section class="overflow-hidden rounded-2xl border border-brandBlue/20 bg-white shadow-sm">
                         <div class="flex flex-col gap-3 border-b border-gray-100 p-6 sm:flex-row sm:items-center sm:justify-between">
                             <div>
@@ -3144,6 +3210,66 @@
             status.className = `p-4 text-sm ${isError ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`;
         }
 
+        function updateBudgetCalculator() {
+            const service = document.getElementById('budget-service').value;
+            const status = document.getElementById('budget-calculator-status');
+            const subtotalElement = document.getElementById('budget-subtotal');
+            const vatElement = document.getElementById('budget-vat');
+            const totalElement = document.getElementById('budget-total');
+            const periodElement = document.getElementById('budget-calculator-period');
+            const monthlyPrices = { 1: 170, 2: 310, 3: 430, 4: 540, 5: 620 };
+
+            document.querySelectorAll('[data-budget-panel]').forEach(panel => {
+                panel.classList.toggle('hidden', panel.dataset.budgetPanel !== service);
+            });
+            status.classList.add('hidden');
+            periodElement.textContent = '';
+
+            let subtotal;
+            if (service === 'hours') {
+                const hours = Number(document.getElementById('budget-hours').value);
+                const visits = Number(document.getElementById('budget-visits').value);
+                if (!Number.isFinite(hours) || hours < 3 || !Number.isInteger(visits) || visits < 1) {
+                    status.textContent = 'Indica al menos 3 horas por visita y un número de visitas igual o superior a 1.';
+                    status.classList.remove('hidden');
+                    subtotalElement.textContent = vatElement.textContent = totalElement.textContent = '—';
+                    return;
+                }
+                subtotal = hours * visits * 16.5;
+                periodElement.textContent = `${hours} horas por visita × ${visits} visita${visits === 1 ? '' : 's'}; tarifa: 16,50 €/hora.`;
+            } else if (service === 'gardening') {
+                subtotal = Number(document.getElementById('budget-gardening-price').value);
+                if (!Number.isFinite(subtotal) || subtotal < 150) {
+                    status.textContent = 'El importe estimado de jardinería debe ser de al menos 150 €.';
+                    status.classList.remove('hidden');
+                    subtotalElement.textContent = vatElement.textContent = totalElement.textContent = '—';
+                    return;
+                }
+                periodElement.textContent = 'Precio base mínimo de jardinería: 150 €.';
+            } else if (service === 'post-work') {
+                subtotal = Number(document.getElementById('budget-post-work-level').value);
+            } else {
+                const days = Number(document.getElementById('budget-monthly-days').value);
+                subtotal = monthlyPrices[days];
+                periodElement.textContent = `Tarifa mensual para ${days} día${days === 1 ? '' : 's'} de servicio por semana.`;
+            }
+
+            const vat = subtotal * 0.21;
+            subtotalElement.textContent = financeCurrency.format(subtotal);
+            vatElement.textContent = financeCurrency.format(vat);
+            totalElement.textContent = financeCurrency.format(subtotal + vat);
+        }
+
+        function initializeBudgetCalculator() {
+            ['budget-service', 'budget-hours', 'budget-visits', 'budget-gardening-price', 'budget-post-work-level', 'budget-monthly-days']
+                .forEach(id => {
+                    const control = document.getElementById(id);
+                    control.addEventListener('input', updateBudgetCalculator);
+                    control.addEventListener('change', updateBudgetCalculator);
+                });
+            updateBudgetCalculator();
+        }
+
         async function loadClientsSection() {
             document.getElementById('clients-status').classList.add('hidden');
             document.getElementById('quote-requests-status').classList.add('hidden');
@@ -3412,6 +3538,7 @@
         initializeFinanceControls();
         initializeAdminSecurityControls();
         initializeSigningControls();
+        initializeBudgetCalculator();
 
         if (new URLSearchParams(window.location.search).get('select') === '1') {
             loginView.style.display = 'flex';
