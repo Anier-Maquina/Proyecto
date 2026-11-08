@@ -303,6 +303,7 @@
                 <a href="#" onclick="switchTab('monthly-finances')" id="nav-monthly-finances" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition-all"><span>💰 Control mensual de gastos e ingresos</span></a>
                 <a href="#" onclick="switchTab('security')" id="nav-security" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition-all"><span>🔒 Bloqueo intentos fallidos</span></a>
                 <a href="#" onclick="switchTab('job-applications')" id="nav-job-applications" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition-all"><span>📄 Candidaturas</span></a>
+                <a href="#" onclick="switchTab('profit-calculator')" id="nav-profit-calculator" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition-all"><span>🧮 Calculadora de ganancias</span></a>
             </nav>
             <div class="p-4 border-t border-gray-700 bg-gray-900/50">
                 <div class="flex items-center space-x-3">
@@ -776,6 +777,73 @@
                             </table>
                         </div>
                         <p id="job-applications-empty" class="hidden p-6 text-center text-sm text-gray-500">Aún no se han recibido candidaturas.</p>
+                    </section>
+                </div>
+                <div id="tab-profit-calculator" class="tab-content hidden space-y-6">
+                    <section class="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+                        <div class="mb-6">
+                            <h3 class="text-lg font-bold text-brandDark">Calculadora de ganancias</h3>
+                            <p class="mt-1 text-sm text-gray-500">Ajusta los importes por hora y las horas trabajadas para calcular el margen y la ganancia total.</p>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full min-w-[36rem] text-left text-sm">
+                                <thead class="bg-gray-50 text-gray-600">
+                                    <tr><th scope="col" class="p-3">Concepto por hora</th><th scope="col" class="p-3">Importe (€)</th></tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100">
+                                    <tr>
+                                        <th scope="row" class="p-3 font-medium text-gray-700"><label for="profit-client-price">Precio por hora a cobrar al cliente</label></th>
+                                        <td class="p-3"><input id="profit-client-price" type="number" min="0" step="0.01" value="16.50" inputmode="decimal" class="w-full max-w-48 rounded-lg border border-gray-300 px-3 py-2 text-right focus:outline-none focus:ring-2 focus:ring-brandBlue"></td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row" class="p-3 font-medium text-gray-700"><label for="profit-worker-salary">Salario bruto del trabajador</label></th>
+                                        <td class="p-3"><input id="profit-worker-salary" type="number" min="0" step="0.01" value="9.50" inputmode="decimal" class="w-full max-w-48 rounded-lg border border-gray-300 px-3 py-2 text-right focus:outline-none focus:ring-2 focus:ring-brandBlue"></td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row" class="p-3 font-medium text-gray-700"><label for="profit-employer-social-security">Seguridad Social de la empresa</label></th>
+                                        <td class="p-3"><input id="profit-employer-social-security" type="number" min="0" step="0.01" value="2.95" inputmode="decimal" class="w-full max-w-48 rounded-lg border border-gray-300 px-3 py-2 text-right focus:outline-none focus:ring-2 focus:ring-brandBlue"></td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row" class="p-3 font-medium text-gray-700"><label for="profit-insurance-management">Seguros y gestoría</label></th>
+                                        <td class="p-3"><input id="profit-insurance-management" type="number" min="0" step="0.01" value="1.20" inputmode="decimal" class="w-full max-w-48 rounded-lg border border-gray-300 px-3 py-2 text-right focus:outline-none focus:ring-2 focus:ring-brandBlue"></td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row" class="p-3 font-medium text-gray-700"><label for="profit-products-materials">Productos y materiales</label></th>
+                                        <td class="p-3"><input id="profit-products-materials" type="number" min="0" step="0.01" value="0.85" inputmode="decimal" class="w-full max-w-48 rounded-lg border border-gray-300 px-3 py-2 text-right focus:outline-none focus:ring-2 focus:ring-brandBlue"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p id="profit-calculator-status" class="mt-4 hidden rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert" aria-live="polite"></p>
+                    </section>
+                    <section class="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+                        <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                            <div>
+                                <h3 class="text-lg font-bold text-brandDark">Ganancia según las horas trabajadas</h3>
+                                <p class="mt-1 text-sm text-gray-500">Los totales se actualizan automáticamente al cambiar cualquier importe o las horas.</p>
+                            </div>
+                            <label for="profit-hours" class="text-sm font-medium text-gray-700">Horas del trabajador
+                                <input id="profit-hours" type="number" min="0" step="0.25" value="1" inputmode="decimal" class="mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2 sm:w-40 focus:outline-none focus:ring-2 focus:ring-brandBlue">
+                            </label>
+                        </div>
+                        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                            <div class="rounded-xl bg-blue-50 p-4">
+                                <p class="text-sm font-medium text-blue-800">Ganancia neta por hora</p>
+                                <p id="profit-hourly-net" class="mt-2 text-2xl font-bold text-brandBlue" aria-live="polite">—</p>
+                            </div>
+                            <div class="rounded-xl bg-teal-50 p-4">
+                                <p class="text-sm font-medium text-teal-800">Margen empresarial</p>
+                                <p id="profit-margin-percent" class="mt-2 text-2xl font-bold text-teal-800" aria-live="polite">—</p>
+                            </div>
+                            <div class="rounded-xl bg-gray-50 p-4">
+                                <p class="text-sm font-medium text-gray-700">Precio total al cliente</p>
+                                <p id="profit-total-price" class="mt-2 text-2xl font-bold text-brandDark" aria-live="polite">—</p>
+                            </div>
+                            <div class="rounded-xl bg-emerald-50 p-4">
+                                <p class="text-sm font-medium text-emerald-800">Ganancia neta total</p>
+                                <p id="profit-total-net" class="mt-2 text-2xl font-bold text-emerald-800" aria-live="polite">—</p>
+                            </div>
+                        </div>
                     </section>
                 </div>
             </main>
@@ -3270,6 +3338,59 @@
             updateBudgetCalculator();
         }
 
+        function updateProfitCalculator() {
+            const inputIds = [
+                'profit-client-price',
+                'profit-worker-salary',
+                'profit-employer-social-security',
+                'profit-insurance-management',
+                'profit-products-materials',
+                'profit-hours'
+            ];
+            const values = inputIds.map(id => {
+                const input = document.getElementById(id);
+                const value = input.value.trim() === '' ? NaN : Number(input.value);
+                input.setAttribute('aria-invalid', String(!Number.isFinite(value) || value < 0));
+                return value;
+            });
+            const status = document.getElementById('profit-calculator-status');
+            const resultIds = ['profit-hourly-net', 'profit-margin-percent', 'profit-total-price', 'profit-total-net'];
+
+            if (values.some(value => !Number.isFinite(value) || value < 0)) {
+                status.textContent = 'Introduce importes y horas válidos, iguales o superiores a cero.';
+                status.classList.remove('hidden');
+                resultIds.forEach(id => { document.getElementById(id).textContent = '—'; });
+                return;
+            }
+
+            status.classList.add('hidden');
+            const [clientPrice, workerSalary, employerSocialSecurity, insuranceManagement, productsMaterials, hours] = values;
+            const hourlyCosts = workerSalary + employerSocialSecurity + insuranceManagement + productsMaterials;
+            const hourlyNet = clientPrice - hourlyCosts;
+            const marginPercent = clientPrice === 0 ? null : hourlyNet / clientPrice * 100;
+            document.getElementById('profit-hourly-net').textContent = financeCurrency.format(hourlyNet);
+            document.getElementById('profit-margin-percent').textContent =
+                marginPercent === null ? '—' : `${new Intl.NumberFormat('es-ES', { maximumFractionDigits: 2 }).format(marginPercent)} %`;
+            document.getElementById('profit-total-price').textContent = financeCurrency.format(clientPrice * hours);
+            document.getElementById('profit-total-net').textContent = financeCurrency.format(hourlyNet * hours);
+        }
+
+        function initializeProfitCalculator() {
+            [
+                'profit-client-price',
+                'profit-worker-salary',
+                'profit-employer-social-security',
+                'profit-insurance-management',
+                'profit-products-materials',
+                'profit-hours'
+            ].forEach(id => {
+                const input = document.getElementById(id);
+                input.addEventListener('input', updateProfitCalculator);
+                input.addEventListener('change', updateProfitCalculator);
+            });
+            updateProfitCalculator();
+        }
+
         async function loadClientsSection() {
             document.getElementById('clients-status').classList.add('hidden');
             document.getElementById('quote-requests-status').classList.add('hidden');
@@ -3539,6 +3660,7 @@
         initializeAdminSecurityControls();
         initializeSigningControls();
         initializeBudgetCalculator();
+        initializeProfitCalculator();
 
         if (new URLSearchParams(window.location.search).get('select') === '1') {
             loginView.style.display = 'flex';
