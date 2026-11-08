@@ -850,11 +850,17 @@
                                 <p class="mt-1 text-sm text-gray-500">Los totales se actualizan automáticamente al cambiar cualquier importe, las horas por servicio o los servicios al mes.</p>
                             </div>
                         </div>
-                        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                            <div class="rounded-xl bg-blue-50 p-4">
-                                <p class="text-sm font-medium text-blue-800">Ganancia neta por hora</p>
-                                <p id="profit-hourly-net" class="mt-2 text-2xl font-bold text-brandBlue" aria-live="polite">—</p>
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <div class="rounded-xl bg-blue-50 p-5">
+                                <p class="text-sm font-semibold text-blue-800">Ganancia neta por hora</p>
+                                <p id="profit-hourly-net" class="mt-2 text-3xl font-bold text-brandBlue" aria-live="polite">—</p>
                             </div>
+                            <div class="rounded-xl bg-emerald-50 p-5">
+                                <p class="text-sm font-semibold text-emerald-800">Ganancia neta mensual</p>
+                                <p id="profit-monthly-net-total" class="mt-2 text-3xl font-bold text-emerald-800" aria-live="polite">—</p>
+                            </div>
+                        </div>
+                        <div class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                             <div class="rounded-xl bg-teal-50 p-4">
                                 <p class="text-sm font-medium text-teal-800">Margen empresarial</p>
                                 <p id="profit-margin-percent" class="mt-2 text-2xl font-bold text-teal-800" aria-live="polite">—</p>
@@ -863,10 +869,6 @@
                                 <p class="text-sm font-medium text-gray-700">Ingreso total por servicio</p>
                                 <p id="profit-total-price" class="mt-2 text-2xl font-bold text-brandDark" aria-live="polite">—</p>
                             </div>
-                            <div class="rounded-xl bg-emerald-50 p-4">
-                                <p class="text-sm font-medium text-emerald-800">Ganancia neta por servicio</p>
-                                <p id="profit-total-net" class="mt-2 text-2xl font-bold text-emerald-800" aria-live="polite">—</p>
-                            </div>
                             <div class="rounded-xl bg-gray-50 p-4">
                                 <p class="text-sm font-medium text-gray-700">Gastos totales al mes</p>
                                 <p id="profit-monthly-cost-total" class="mt-2 text-2xl font-bold text-brandDark" aria-live="polite">—</p>
@@ -874,10 +876,6 @@
                             <div class="rounded-xl bg-blue-50 p-4">
                                 <p class="text-sm font-medium text-blue-800">Ingresos totales al mes</p>
                                 <p id="profit-monthly-revenue-total" class="mt-2 text-2xl font-bold text-brandBlue" aria-live="polite">—</p>
-                            </div>
-                            <div class="rounded-xl bg-emerald-50 p-4">
-                                <p class="text-sm font-medium text-emerald-800">Ganancia neta mensual</p>
-                                <p id="profit-monthly-net-total" class="mt-2 text-2xl font-bold text-emerald-800" aria-live="polite">—</p>
                             </div>
                         </div>
                     </section>
