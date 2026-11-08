@@ -57,7 +57,7 @@ Después, vuelve a iniciar el servidor con `python .\server.py serve` o `Iniciar
 
 En el panel lateral, **Bloqueo intentos fallidos** abre la vista dedicada al registro de los últimos 200 rechazos de acceso administrativo, con fecha y hora UTC, IP y motivo. Un administrador puede bloquear o desbloquear una dirección IPv4 o IPv6 desde esa vista. El bloqueo por IP impide nuevos inicios de sesión de administrador desde esa dirección, pero no bloquea los fichajes ni las cuentas de operario. La lista completa se conserva en SQLite.
 
-En el panel lateral, **Calculadora de ganancias** permite modificar el precio por hora y los costes del trabajador, consultar el margen neto por hora y calcular el precio al cliente y la ganancia neta total para las horas trabajadas.
+En el panel lateral, **Calculadora de ganancias** permite modificar el precio alternativo por hora y los costes, añadir conceptos de gasto y calcular ganancias por servicio o mensuales. El total propuesto por la comunidad, cuando se introduce, se divide entre las horas del servicio para obtener la tarifa efectiva; si se deja vacío, se utiliza el precio por hora. La columna mensual de cada concepto se calcula a partir de su importe por hora, las horas por servicio y el número de servicios al mes.
 
 El servidor registra la dirección remota que ve en la conexión. Si la aplicación está detrás de un proxy, o varios usuarios comparten una IP pública, la IP puede representar al proxy o a todos esos usuarios; por eso conviene comprobarla antes de bloquearla. El bloqueo de la cuenta administrativa tras cinco PIN incorrectos es independiente y se sigue reactivando con `python .\server.py unlock-admin` desde el PC servidor.
 
