@@ -787,7 +787,7 @@
                                 <p class="mt-1 text-sm text-gray-500">Ajusta los importes, las horas por servicio y los servicios mensuales para calcular la ganancia.</p>
                             </div>
                             <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                                <label for="profit-community-total" class="text-sm font-medium text-gray-700">Total propuesto por la comunidad (€)
+                                <label for="profit-community-total" class="text-sm font-medium text-gray-700">Total mensual propuesto por la comunidad (€)
                                     <input id="profit-community-total" type="number" min="0" step="0.01" placeholder="Opcional" inputmode="decimal" class="mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brandBlue">
                                 </label>
                                 <label for="profit-hours" class="text-sm font-medium text-gray-700">Horas del trabajador por servicio
@@ -851,9 +851,15 @@
                             </div>
                         </div>
                         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                            <div class="rounded-xl bg-blue-50 p-4">
-                                <p class="text-sm font-medium text-blue-800">Ganancia neta por hora</p>
-                                <p id="profit-hourly-net" class="mt-2 text-2xl font-bold text-brandBlue" aria-live="polite">—</p>
+                            <div class="space-y-4">
+                                <div class="rounded-xl bg-blue-50 p-4">
+                                    <p class="text-sm font-medium text-blue-800">Ganancia neta por hora</p>
+                                    <p id="profit-hourly-net" class="mt-2 text-2xl font-bold text-brandBlue" aria-live="polite">—</p>
+                                </div>
+                                <div class="rounded-xl bg-emerald-50 p-4">
+                                    <p class="text-sm font-medium text-emerald-800">Ganancia neta mensual</p>
+                                    <p id="profit-monthly-net-total" class="mt-2 text-2xl font-bold text-emerald-800" aria-live="polite">—</p>
+                                </div>
                             </div>
                             <div class="rounded-xl bg-teal-50 p-4">
                                 <p class="text-sm font-medium text-teal-800">Margen empresarial</p>
@@ -874,10 +880,6 @@
                             <div class="rounded-xl bg-blue-50 p-4">
                                 <p class="text-sm font-medium text-blue-800">Ingresos totales al mes</p>
                                 <p id="profit-monthly-revenue-total" class="mt-2 text-2xl font-bold text-brandBlue" aria-live="polite">—</p>
-                            </div>
-                            <div class="rounded-xl bg-emerald-50 p-4">
-                                <p class="text-sm font-medium text-emerald-800">Ganancia neta mensual</p>
-                                <p id="profit-monthly-net-total" class="mt-2 text-2xl font-bold text-emerald-800" aria-live="polite">—</p>
                             </div>
                         </div>
                     </section>
@@ -3466,15 +3468,18 @@
 
             const invalidMonthlyServiceCount = !Number.isInteger(values[6]);
             const proposalNeedsHours = communityTotal !== null && values[5] === 0;
+            const proposalNeedsMonthlyServices = communityTotal !== null && values[6] === 0;
             if (
                 [...values, ...additionalExpenses].some(value => !Number.isFinite(value) || value < 0) ||
                 !isCommunityTotalValid ||
                 invalidMonthlyServiceCount ||
-                proposalNeedsHours
+                proposalNeedsHours ||
+                proposalNeedsMonthlyServices
             ) {
                 status.textContent = 'Introduce importes y horas válidos, iguales o superiores a cero.';
-                if (proposalNeedsHours) status.textContent = 'Indica más de 0 horas por servicio para calcular el precio por hora de la propuesta.';
+                if (proposalNeedsHours) status.textContent = 'Indica más de 0 horas por servicio para calcular la tarifa horaria de la propuesta mensual.';
                 if (invalidMonthlyServiceCount) status.textContent = 'El número de servicios al mes debe ser un número entero igual o superior a cero.';
+                if (proposalNeedsMonthlyServices) status.textContent = 'Indica al menos 1 servicio al mes para calcular la tarifa horaria de la propuesta mensual.';
                 status.classList.remove('hidden');
                 resultIds.forEach(id => { document.getElementById(id).textContent = '—'; });
                 document.querySelectorAll('[data-profit-monthly-cost], [data-profit-monthly-revenue]').forEach(cell => { cell.textContent = '—'; });
@@ -3484,7 +3489,9 @@
 
             status.classList.add('hidden');
             const [hourlyClientPrice, workerSalary, employerSocialSecurity, insuranceManagement, productsMaterials, hours, monthlyServices] = values;
-            const effectiveClientPrice = communityTotal === null ? hourlyClientPrice : communityTotal / hours;
+            const effectiveClientPrice = communityTotal === null
+                ? hourlyClientPrice
+                : communityTotal / (hours * monthlyServices);
             const fixedHourlyCosts = workerSalary + employerSocialSecurity + insuranceManagement + productsMaterials;
             const additionalHourlyCosts = additionalExpenses.reduce((total, expense) => total + expense, 0);
             const hourlyCosts = fixedHourlyCosts + additionalHourlyCosts;
@@ -3492,7 +3499,7 @@
             const marginPercent = effectiveClientPrice === 0 ? null : hourlyNet / effectiveClientPrice * 100;
             const serviceRevenue = effectiveClientPrice * hours;
             const serviceCosts = hourlyCosts * hours;
-            const monthlyRevenue = serviceRevenue * monthlyServices;
+            const monthlyRevenue = communityTotal === null ? serviceRevenue * monthlyServices : communityTotal;
             const monthlyCosts = serviceCosts * monthlyServices;
             const monthlyNet = monthlyRevenue - monthlyCosts;
             const monthlyCostCells = [...document.querySelectorAll('#profit-expenses tr[data-profit-additional-expense] [data-profit-monthly-cost]')];
@@ -3518,7 +3525,7 @@
             if (communityTotal === null) {
                 effectiveRateNote.classList.add('hidden');
             } else {
-                effectiveRateNote.textContent = `Tarifa efectiva de la propuesta: ${financeCurrency.format(effectiveClientPrice)} por hora.`;
+                effectiveRateNote.textContent = `Tarifa efectiva de la propuesta mensual: ${financeCurrency.format(effectiveClientPrice)} por hora (${financeCurrency.format(serviceRevenue)} por servicio).`;
                 effectiveRateNote.classList.remove('hidden');
             }
         }
