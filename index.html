@@ -781,35 +781,43 @@
                 </div>
                 <div id="tab-profit-calculator" class="tab-content hidden space-y-6">
                     <section class="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-                        <div class="mb-6">
-                            <h3 class="text-lg font-bold text-brandDark">Calculadora de ganancias</h3>
-                            <p class="mt-1 text-sm text-gray-500">Ajusta los importes por hora y las horas trabajadas para calcular el margen y la ganancia total.</p>
+                        <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <h3 class="text-lg font-bold text-brandDark">Calculadora de ganancias</h3>
+                                <p class="mt-1 text-sm text-gray-500">Ajusta los importes por hora y las horas trabajadas para calcular el margen y la ganancia total.</p>
+                            </div>
+                            <button id="profit-add-expense" type="button" class="inline-flex items-center justify-center rounded-xl bg-brandBlue px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-brandBlue focus:ring-offset-2">+ Añadir concepto de gasto</button>
                         </div>
                         <div class="overflow-x-auto">
-                            <table class="w-full min-w-[36rem] text-left text-sm">
+                            <table class="w-full min-w-[42rem] text-left text-sm">
                                 <thead class="bg-gray-50 text-gray-600">
-                                    <tr><th scope="col" class="p-3">Concepto por hora</th><th scope="col" class="p-3">Importe (€)</th></tr>
+                                    <tr><th scope="col" class="p-3">Concepto por hora</th><th scope="col" class="p-3">Importe (€)</th><th scope="col" class="p-3"><span class="sr-only">Acciones</span></th></tr>
                                 </thead>
-                                <tbody class="divide-y divide-gray-100">
+                                <tbody id="profit-expenses" class="divide-y divide-gray-100">
                                     <tr>
                                         <th scope="row" class="p-3 font-medium text-gray-700"><label for="profit-client-price">Precio por hora a cobrar al cliente</label></th>
                                         <td class="p-3"><input id="profit-client-price" type="number" min="0" step="0.01" value="16.50" inputmode="decimal" class="w-full max-w-48 rounded-lg border border-gray-300 px-3 py-2 text-right focus:outline-none focus:ring-2 focus:ring-brandBlue"></td>
+                                        <td></td>
                                     </tr>
                                     <tr>
                                         <th scope="row" class="p-3 font-medium text-gray-700"><label for="profit-worker-salary">Salario bruto del trabajador</label></th>
                                         <td class="p-3"><input id="profit-worker-salary" type="number" min="0" step="0.01" value="9.50" inputmode="decimal" class="w-full max-w-48 rounded-lg border border-gray-300 px-3 py-2 text-right focus:outline-none focus:ring-2 focus:ring-brandBlue"></td>
+                                        <td></td>
                                     </tr>
                                     <tr>
                                         <th scope="row" class="p-3 font-medium text-gray-700"><label for="profit-employer-social-security">Seguridad Social de la empresa</label></th>
                                         <td class="p-3"><input id="profit-employer-social-security" type="number" min="0" step="0.01" value="2.95" inputmode="decimal" class="w-full max-w-48 rounded-lg border border-gray-300 px-3 py-2 text-right focus:outline-none focus:ring-2 focus:ring-brandBlue"></td>
+                                        <td></td>
                                     </tr>
                                     <tr>
                                         <th scope="row" class="p-3 font-medium text-gray-700"><label for="profit-insurance-management">Seguros y gestoría</label></th>
                                         <td class="p-3"><input id="profit-insurance-management" type="number" min="0" step="0.01" value="1.20" inputmode="decimal" class="w-full max-w-48 rounded-lg border border-gray-300 px-3 py-2 text-right focus:outline-none focus:ring-2 focus:ring-brandBlue"></td>
+                                        <td></td>
                                     </tr>
                                     <tr>
                                         <th scope="row" class="p-3 font-medium text-gray-700"><label for="profit-products-materials">Productos y materiales</label></th>
                                         <td class="p-3"><input id="profit-products-materials" type="number" min="0" step="0.01" value="0.85" inputmode="decimal" class="w-full max-w-48 rounded-lg border border-gray-300 px-3 py-2 text-right focus:outline-none focus:ring-2 focus:ring-brandBlue"></td>
+                                        <td></td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -3338,6 +3346,53 @@
             updateBudgetCalculator();
         }
 
+        let nextProfitExpenseId = 1;
+
+        function addProfitExpense() {
+            const expenseId = nextProfitExpenseId++;
+            const row = document.createElement('tr');
+            row.dataset.profitAdditionalExpense = 'true';
+
+            const nameCell = document.createElement('td');
+            nameCell.className = 'p-3';
+            const nameInput = document.createElement('input');
+            nameInput.type = 'text';
+            nameInput.maxLength = 100;
+            nameInput.placeholder = 'Nombre del gasto';
+            nameInput.setAttribute('aria-label', `Concepto de gasto adicional ${expenseId}`);
+            nameInput.className = 'w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brandBlue';
+            nameCell.appendChild(nameInput);
+
+            const amountCell = document.createElement('td');
+            amountCell.className = 'p-3';
+            const amountInput = document.createElement('input');
+            amountInput.type = 'number';
+            amountInput.min = '0';
+            amountInput.step = '0.01';
+            amountInput.value = '0.00';
+            amountInput.inputMode = 'decimal';
+            amountInput.setAttribute('aria-label', `Importe por hora del concepto de gasto ${expenseId}`);
+            amountInput.className = 'w-full max-w-48 rounded-lg border border-gray-300 px-3 py-2 text-right focus:outline-none focus:ring-2 focus:ring-brandBlue';
+            amountCell.appendChild(amountInput);
+
+            const actionCell = document.createElement('td');
+            actionCell.className = 'p-3 text-right';
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.className = 'rounded-lg px-2 py-1 text-sm font-semibold text-red-600 hover:bg-red-50';
+            removeButton.textContent = 'Eliminar';
+            removeButton.setAttribute('aria-label', `Eliminar concepto de gasto adicional ${expenseId}`);
+            removeButton.addEventListener('click', () => {
+                row.remove();
+                updateProfitCalculator();
+            });
+            actionCell.appendChild(removeButton);
+
+            row.append(nameCell, amountCell, actionCell);
+            document.getElementById('profit-expenses').appendChild(row);
+            nameInput.focus();
+        }
+
         function updateProfitCalculator() {
             const inputIds = [
                 'profit-client-price',
@@ -3353,10 +3408,16 @@
                 input.setAttribute('aria-invalid', String(!Number.isFinite(value) || value < 0));
                 return value;
             });
+            const additionalExpenseInputs = [...document.querySelectorAll('#profit-expenses tr[data-profit-additional-expense] input[type="number"]')];
+            const additionalExpenses = additionalExpenseInputs.map(input => {
+                const value = input.value.trim() === '' ? NaN : Number(input.value);
+                input.setAttribute('aria-invalid', String(!Number.isFinite(value) || value < 0));
+                return value;
+            });
             const status = document.getElementById('profit-calculator-status');
             const resultIds = ['profit-hourly-net', 'profit-margin-percent', 'profit-total-price', 'profit-total-net'];
 
-            if (values.some(value => !Number.isFinite(value) || value < 0)) {
+            if ([...values, ...additionalExpenses].some(value => !Number.isFinite(value) || value < 0)) {
                 status.textContent = 'Introduce importes y horas válidos, iguales o superiores a cero.';
                 status.classList.remove('hidden');
                 resultIds.forEach(id => { document.getElementById(id).textContent = '—'; });
@@ -3365,7 +3426,8 @@
 
             status.classList.add('hidden');
             const [clientPrice, workerSalary, employerSocialSecurity, insuranceManagement, productsMaterials, hours] = values;
-            const hourlyCosts = workerSalary + employerSocialSecurity + insuranceManagement + productsMaterials;
+            const hourlyCosts = workerSalary + employerSocialSecurity + insuranceManagement + productsMaterials +
+                additionalExpenses.reduce((total, expense) => total + expense, 0);
             const hourlyNet = clientPrice - hourlyCosts;
             const marginPercent = clientPrice === 0 ? null : hourlyNet / clientPrice * 100;
             document.getElementById('profit-hourly-net').textContent = financeCurrency.format(hourlyNet);
@@ -3387,6 +3449,12 @@
                 const input = document.getElementById(id);
                 input.addEventListener('input', updateProfitCalculator);
                 input.addEventListener('change', updateProfitCalculator);
+            });
+            document.getElementById('profit-add-expense').addEventListener('click', addProfitExpense);
+            document.getElementById('profit-expenses').addEventListener('input', event => {
+                if (event.target.matches('tr[data-profit-additional-expense] input[type="number"]')) {
+                    updateProfitCalculator();
+                }
             });
             updateProfitCalculator();
         }
