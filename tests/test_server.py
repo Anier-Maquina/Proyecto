@@ -103,6 +103,7 @@ class AttendanceServerTests(unittest.TestCase):
         )
         self.assertEqual(response.headers["Access-Control-Allow-Credentials"], "true")
         self.assertIn("POST", response.headers["Access-Control-Allow-Methods"])
+        self.assertIn("DELETE", response.headers["Access-Control-Allow-Methods"])
         response.close()
 
     def test_mobile_login_uses_worker_bearer_session_and_revokes_on_logout(self):
@@ -496,6 +497,80 @@ class AttendanceServerTests(unittest.TestCase):
             {"filename": "documento.txt", "content": base64.b64encode(original_pdf).decode("ascii")},
         )
         self.assertEqual(response.status, 400)
+
+    def test_archive_documents_and_folders_are_persistent_and_admin_only(self):
+        response, _ = self.request("/api/admin/archive")
+        self.assertEqual(response.status, 401)
+
+        self.login_pin("Operario 02", "4102")
+        response, _ = self.request("/api/admin/archive")
+        self.assertEqual(response.status, 403)
+
+        self.opener = build_opener(HTTPCookieProcessor(CookieJar()))
+        self.login_pin("administrador", "7804")
+        response, archive = self.request("/api/admin/archive")
+        self.assertEqual(response.status, 200)
+        self.assertEqual(
+            {folder["id"] for folder in archive["folders"]},
+            {"general", "recursos-humanos", "operaciones", "control-mensual"},
+        )
+
+        response, created_folder = self.request(
+            "/api/admin/archive/folders",
+            {"name": "Contratos"},
+        )
+        self.assertEqual(response.status, 201)
+        folder_id = created_folder["folder"]["id"]
+
+        file_content = b"Documento persistente de prueba"
+        response, created_document = self.request(
+            "/api/admin/archive/documents",
+            {
+                "filename": r"..\\contratos\\acuerdo.txt",
+                "folderId": folder_id,
+                "mimeType": "text/plain",
+                "content": base64.b64encode(file_content).decode("ascii"),
+                "editableFields": [{"label": "Empresa", "value": "Grupo ADA"}],
+            },
+        )
+        self.assertEqual(response.status, 201)
+        document = created_document["document"]
+        self.assertEqual(document["name"], "acuerdo.txt")
+        self.assertEqual(document["editableFields"], [{"label": "Empresa", "value": "Grupo ADA"}])
+
+        server.initialize_database()
+        response, archive_after_save = self.request("/api/admin/archive")
+        self.assertEqual(response.status, 200)
+        self.assertTrue(any(folder["name"] == "Contratos" for folder in archive_after_save["folders"]))
+        saved_document = next(
+            item for item in archive_after_save["documents"] if item["id"] == document["id"]
+        )
+        self.assertEqual(saved_document["editableFields"], document["editableFields"])
+        self.assertEqual(saved_document["url"], document["url"])
+
+        other_opener = build_opener(HTTPCookieProcessor(CookieJar()))
+        admin_opener = self.opener
+        self.opener = other_opener
+        self.login_pin("Operario 02", "4102")
+        response, _ = self.request(f"{document['url']}")
+        self.assertEqual(response.status, 403)
+
+        self.opener = admin_opener
+        file_response = self.opener.open(Request(self.base_url + document["url"]))
+        self.assertEqual(file_response.read(), file_content)
+        file_response.close()
+
+        response, _ = self.request(
+            f"/api/admin/archive/documents/{document['id']}",
+            method="DELETE",
+        )
+        self.assertEqual(response.status, 200)
+        response, archive_after_delete = self.request("/api/admin/archive")
+        self.assertEqual(response.status, 200)
+        self.assertFalse(any(item["id"] == document["id"] for item in archive_after_delete["documents"]))
+        self.assertFalse(
+            (Path(server.DATABASE_PATH).parent / "archivo_documental" / f"{document['id']}.bin").exists()
+        )
 
     def test_job_applications_are_validated_admin_only_and_deletable(self):
         cv_content = b"%PDF-1.4\ncandidate"

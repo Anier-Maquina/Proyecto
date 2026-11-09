@@ -597,10 +597,11 @@
                             <label for="archive-upload-folder" class="sr-only">Carpeta para el archivo local</label>
                             <select id="archive-upload-folder" class="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-brandDark" aria-label="Carpeta para el archivo local"></select>
                             <input id="archive-file-input" type="file" class="hidden" aria-label="Seleccionar documento local">
-                            <button type="button" onclick="document.getElementById('archive-file-input').click()" class="px-4 py-2 rounded-xl border border-brandBlue text-brandBlue text-sm font-medium hover:bg-blue-50">⬆ Cargar archivo</button>
+                            <button type="button" onclick="document.getElementById('archive-file-input').click()" class="px-4 py-2 rounded-xl border border-brandBlue text-brandBlue text-sm font-medium hover:bg-blue-50">⬆ Cargar archivo (máx. 4 MB)</button>
                             <button type="button" onclick="printSelectedDocuments()" class="custom-gradient text-white px-4 py-2 rounded-xl text-sm font-medium shadow">🖨️ Imprimir seleccionados</button>
                         </div>
                     </div>
+                    <p id="archive-status" class="hidden rounded-lg p-3 text-sm" role="status" aria-live="polite"></p>
                     <div id="archive-folders" class="grid grid-cols-1 xl:grid-cols-2 gap-5"></div>
                 </div>
                 <!-- SIGNING -->
@@ -1049,6 +1050,27 @@
         </div>
     </div>
 
+    <!-- MODAL: EDIT ARCHIVE DOCUMENT FIELDS -->
+    <div id="archive-fields-modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="archive-fields-title">
+        <div class="bg-white w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl p-6 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between gap-3">
+                <div><h3 id="archive-fields-title" class="font-bold text-lg text-brandDark">Editar campos del documento</h3><p id="archive-fields-source" class="text-sm text-gray-500"></p></div>
+                <button type="button" onclick="closeArchiveFieldsModal()" aria-label="Cerrar" class="font-bold">✕</button>
+            </div>
+            <p class="text-sm text-gray-600">Añade los campos que necesites. Al guardar se descargará una copia independiente e imprimible en HTML; el documento original se conservará.</p>
+            <form id="archive-fields-form" class="space-y-4">
+                <div><label for="archive-fields-document-name" class="block text-xs font-semibold text-gray-600 mb-1">Nombre de la copia</label><input type="text" id="archive-fields-document-name" maxlength="140" class="w-full px-4 py-2 border rounded-xl text-sm" required></div>
+                <div id="archive-document-fields" class="space-y-3"></div>
+                <button type="button" onclick="addArchiveFieldRow()" class="rounded-xl border border-brandBlue px-4 py-2 text-sm font-medium text-brandBlue hover:bg-blue-50">＋ Añadir campo</button>
+                <p id="archive-fields-error" class="hidden text-sm text-red-600" role="alert"></p>
+                <div class="flex flex-col-reverse gap-3 pt-2 sm:flex-row">
+                    <button type="button" onclick="closeArchiveFieldsModal()" class="flex-1 rounded-xl bg-gray-100 py-2 text-sm text-gray-600">Cancelar</button>
+                    <button type="submit" class="flex-1 custom-gradient rounded-xl py-2 text-sm font-medium text-white">Guardar documento</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- MODAL: WORKER DOCUMENTATION -->
     <div id="worker-documents-modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="worker-documents-title">
         <div class="bg-white w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl p-6 shadow-2xl space-y-4">
@@ -1081,10 +1103,9 @@
         let nextLocationId = 4;
         let nextInventoryId = 5;
         let nextClientId = 3;
-        let nextFolderId = 6;
-        let nextDocumentId = 4;
         let nextTaskId = 1;
         let selectedWorkerId = null;
+        let editingArchiveDocumentId = null;
         let editingWorkerId = null;
         let selectedOrganizationDepartment = null;
         let editingInventoryItemId = null;
@@ -1105,17 +1126,8 @@
             { id: 4, name: 'SEG-003 (Botiquines)', category: 'Seguridad', quantity: 12, locationId: 3 }
         ];
         const clients = [];
-        const archiveFolders = [
-            { id: 1, name: 'General' },
-            { id: 2, name: 'Recursos Humanos' },
-            { id: 3, name: 'Operaciones' },
-            { id: 5, name: 'control mensual de gastos e ingresos' }
-        ];
-        const documents = [
-            { id: 1, name: 'Manual corporativo.pdf', folderId: 1 },
-            { id: 2, name: 'Política de vacaciones.pdf', folderId: 2 },
-            { id: 3, name: 'Protocolo de seguridad.pdf', folderId: 3 }
-        ];
+        const archiveFolders = [];
+        const documents = [];
         const tasks = [];
         const monthNames = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
@@ -1150,7 +1162,7 @@
             if (tabId === 'structure') renderOrganization();
             if (tabId === 'dashboard') renderDashboard();
             if (tabId === 'inventory') renderInventory();
-            if (tabId === 'archive') renderArchive();
+            if (tabId === 'archive') loadArchive();
             if (tabId === 'tasks') renderCalendar();
             if (tabId === 'clients') loadClientsSection();
             if (tabId === 'security') loadAdminSecurityEvents();
@@ -1864,6 +1876,226 @@
             clearFormError('document-form-error');
         }
 
+        function showArchiveStatus(message, isError = false) {
+            const status = document.getElementById('archive-status');
+            status.textContent = message;
+            status.className = `rounded-lg p-3 text-sm ${isError ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`;
+        }
+
+        async function loadArchive() {
+            try {
+                const archive = await requestApi('/api/admin/archive');
+                documents.forEach(item => {
+                    if (item.url?.startsWith('blob:')) URL.revokeObjectURL(item.url);
+                });
+                archiveFolders.splice(0, archiveFolders.length, ...archive.folders);
+                documents.splice(0, documents.length, ...archive.documents);
+                renderArchive();
+                document.getElementById('archive-status').classList.add('hidden');
+            } catch (error) {
+                showArchiveStatus(error.message, true);
+                return;
+            }
+
+            try {
+                const { reports } = await requestApi('/api/admin/monthly-finances');
+                reports.forEach(report => {
+                    addMonthlyFinanceArchiveRecord(JSON.parse(report.content), report.filename);
+                });
+                document.getElementById('archive-status').classList.add('hidden');
+            } catch (error) {
+                showArchiveStatus(`El archivo está actualizado, pero no se pudieron cargar los registros mensuales: ${error.message}`, true);
+            }
+        }
+
+        function openArchiveFieldsEditor(folderId) {
+            const folderSection = [...document.querySelectorAll('#archive-folders .archive-folder')]
+                .find(section => section.dataset.folderId === folderId);
+            const selectedRows = folderSection?.querySelectorAll('.print-selector:checked') || [];
+            if (selectedRows.length !== 1) {
+                window.alert(selectedRows.length === 0
+                    ? 'Selecciona la casilla de un documento de esta carpeta para editar sus campos.'
+                    : 'Selecciona solo un documento de esta carpeta cada vez.');
+                return;
+            }
+
+            const documentId = selectedRows[0].closest('.document-row').dataset.documentId;
+            const archiveDocument = documents.find(item => item.id === documentId);
+            if (!archiveDocument) {
+                window.alert('No se encontró el documento seleccionado.');
+                return;
+            }
+
+            editingArchiveDocumentId = archiveDocument.id;
+            document.getElementById('archive-fields-source').textContent = `Documento original: ${archiveDocument.name}`;
+            const nameInput = document.getElementById('archive-fields-document-name');
+            nameInput.value = `${archiveDocument.name.replace(/\.[^.]+$/, '')} - rellenado`;
+            const fields = document.getElementById('archive-document-fields');
+            fields.replaceChildren();
+            (archiveDocument.editableFields || []).forEach(field => addArchiveFieldRow(field));
+            if (fields.childElementCount === 0) addArchiveFieldRow();
+            clearFormError('archive-fields-error');
+            showModal('archive-fields-modal');
+            nameInput.focus();
+        }
+
+        function closeArchiveFieldsModal() {
+            hideModal('archive-fields-modal');
+            document.getElementById('archive-fields-form').reset();
+            document.getElementById('archive-document-fields').replaceChildren();
+            document.getElementById('archive-fields-source').textContent = '';
+            clearFormError('archive-fields-error');
+            editingArchiveDocumentId = null;
+        }
+
+        function addArchiveFieldRow(field = {}) {
+            const row = document.createElement('div');
+            row.className = 'grid gap-3 rounded-xl border border-gray-200 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto]';
+
+            const labelWrapper = document.createElement('div');
+            const label = document.createElement('label');
+            label.className = 'mb-1 block text-xs font-semibold text-gray-600';
+            label.textContent = 'Nombre del campo';
+            const labelInput = document.createElement('input');
+            labelInput.type = 'text';
+            labelInput.maxLength = 100;
+            labelInput.placeholder = 'Ej. Nombre completo';
+            labelInput.className = 'w-full rounded-xl border px-3 py-2 text-sm';
+            labelInput.value = field.label || '';
+            label.appendChild(labelInput);
+            labelWrapper.appendChild(label);
+
+            const valueWrapper = document.createElement('div');
+            const valueLabel = document.createElement('label');
+            valueLabel.className = 'mb-1 block text-xs font-semibold text-gray-600';
+            valueLabel.textContent = 'Contenido';
+            const valueInput = document.createElement('textarea');
+            valueInput.rows = 2;
+            valueInput.maxLength = 2000;
+            valueInput.placeholder = 'Escribe el contenido del campo';
+            valueInput.className = 'w-full rounded-xl border px-3 py-2 text-sm';
+            valueInput.value = field.value || '';
+            valueLabel.appendChild(valueInput);
+            valueWrapper.appendChild(valueLabel);
+
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'self-end rounded-lg px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50';
+            remove.textContent = 'Quitar';
+            remove.setAttribute('aria-label', 'Quitar campo');
+            remove.addEventListener('click', () => row.remove());
+
+            row.append(labelWrapper, valueWrapper, remove);
+            row.dataset.fieldRow = 'true';
+            document.getElementById('archive-document-fields').appendChild(row);
+        }
+
+        function escapeArchiveHtml(value) {
+            return String(value).replace(/[&<>"']/g, character => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            })[character]);
+        }
+
+        function archiveFileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.addEventListener('load', () => {
+                    const result = String(reader.result || '');
+                    const separator = result.indexOf(',');
+                    if (separator < 0) {
+                        reject(new Error('No se pudo preparar el archivo para guardarlo.'));
+                        return;
+                    }
+                    resolve(result.slice(separator + 1));
+                }, { once: true });
+                reader.addEventListener('error', () => reject(new Error('No se pudo leer el archivo seleccionado.')), { once: true });
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function saveArchiveFields(event) {
+            event.preventDefault();
+            const archiveDocument = documents.find(item => item.id === editingArchiveDocumentId);
+            if (!archiveDocument) {
+                showFormError('archive-fields-error', 'No se encontró el documento original. Vuelve a seleccionarlo.');
+                return;
+            }
+
+            const fields = [...document.querySelectorAll('#archive-document-fields [data-field-row]')].map(row => ({
+                label: row.querySelector('input').value.trim(),
+                value: row.querySelector('textarea').value.trim()
+            }));
+            if (fields.length === 0 || fields.some(field => !field.label)) {
+                showFormError('archive-fields-error', 'Añade al menos un campo y completa el nombre de cada campo.');
+                return;
+            }
+
+            const baseName = document.getElementById('archive-fields-document-name').value.trim().replace(/[<>:"/\\|?*\u0000-\u001f]/g, '-');
+            if (!baseName) {
+                showFormError('archive-fields-error', 'Escribe un nombre válido para la copia.');
+                return;
+            }
+            const fileName = `${baseName.replace(/\.html?$/i, '')}.html`;
+
+            const fieldMarkup = fields.map(field => `
+                <section class="field">
+                    <h2>${escapeArchiveHtml(field.label)}</h2>
+                    <p>${escapeArchiveHtml(field.value).replace(/\r?\n/g, '<br>') || '&nbsp;'}</p>
+                </section>`).join('');
+            const html = `<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${escapeArchiveHtml(baseName)}</title>
+<style>
+body{font-family:Arial,sans-serif;max-width:800px;margin:48px auto;padding:0 24px;color:#1f2937}
+h1{font-size:26px;margin-bottom:32px}.field{margin:0 0 24px;break-inside:avoid}
+.field h2{font-size:14px;color:#4b5563;margin-bottom:6px}.field p{font-size:16px;line-height:1.6;margin:0;white-space:normal}
+@media print{body{margin:20mm auto;padding:0}}
+</style>
+</head>
+<body>
+<h1>${escapeArchiveHtml(baseName)}</h1>
+${fieldMarkup}
+</body>
+</html>`;
+            const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+            const saveButton = document.querySelector('#archive-fields-form button[type="submit"]');
+            saveButton.disabled = true;
+            clearFormError('archive-fields-error');
+            try {
+                const { document: savedDocument } = await requestApi('/api/admin/archive/documents', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        filename: fileName,
+                        folderId: archiveDocument.folderId,
+                        mimeType: 'text/html',
+                        content: await archiveFileToBase64(blob),
+                        editableFields: fields
+                    })
+                });
+                documents.push(savedDocument);
+                closeArchiveFieldsModal();
+                renderArchive();
+                const download = document.createElement('a');
+                download.href = savedDocument.url;
+                download.download = savedDocument.name;
+                document.body.appendChild(download);
+                download.click();
+                download.remove();
+                showArchiveStatus('Documento guardado en el archivo y descargado correctamente.');
+            } catch (error) {
+                showFormError('archive-fields-error', error.message);
+            } finally {
+                saveButton.disabled = false;
+            }
+        }
+
         function renderArchive() {
             const container = document.getElementById('archive-folders');
             container.replaceChildren();
@@ -1880,20 +2112,29 @@
             archiveFolders.forEach(folder => {
                 const section = document.createElement('section');
                 section.className = 'archive-folder bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden';
+                section.dataset.folderId = String(folder.id);
                 const heading = document.createElement('div');
                 heading.className = 'flex items-center justify-between gap-3 p-5 border-b border-gray-100';
+                const headingTitle = document.createElement('div');
+                headingTitle.className = 'flex flex-wrap items-center gap-3';
                 const title = document.createElement('h4');
                 title.className = 'font-bold text-brandDark';
                 title.textContent = `📁 ${folder.name}`;
-                const count = documents.filter(document => document.folderId === folder.id).length;
+                const editFields = document.createElement('button');
+                editFields.type = 'button';
+                editFields.className = 'no-print rounded-lg border border-brandBlue px-3 py-1.5 text-xs font-semibold text-brandBlue hover:bg-blue-50';
+                editFields.textContent = 'Editar campos';
+                editFields.addEventListener('click', () => openArchiveFieldsEditor(folder.id));
+                headingTitle.append(title, editFields);
+                const count = documents.filter(archiveDocument => archiveDocument.folderId === folder.id).length;
                 const badge = document.createElement('span');
                 badge.className = 'text-xs text-gray-500';
                 badge.textContent = `${count} ${count === 1 ? 'documento' : 'documentos'}`;
-                heading.append(title, badge);
+                heading.append(headingTitle, badge);
 
                 const list = document.createElement('div');
                 list.className = 'divide-y divide-gray-100';
-                const folderDocuments = documents.filter(document => document.folderId === folder.id);
+                const folderDocuments = documents.filter(archiveDocument => archiveDocument.folderId === folder.id);
                 if (folderDocuments.length === 0) {
                     const empty = document.createElement('p');
                     empty.className = 'p-5 text-sm text-gray-500';
@@ -1907,7 +2148,7 @@
                     const checkbox = document.createElement('input');
                     checkbox.type = 'checkbox';
                     checkbox.className = 'print-selector h-4 w-4 accent-brandBlue';
-                    checkbox.setAttribute('aria-label', `Seleccionar ${archiveDocument.name} para imprimir`);
+                    checkbox.setAttribute('aria-label', `Seleccionar ${archiveDocument.name} para imprimir o editar campos`);
                     checkbox.addEventListener('change', () => {
                         row.classList.toggle('print-selected', checkbox.checked);
                     });
@@ -1940,15 +2181,15 @@
                             preview.setAttribute('sandbox', '');
                         }
                         row.appendChild(preview);
-                        if (!archiveDocument.managedByServer) {
-                            const remove = document.createElement('button');
-                            remove.type = 'button';
-                            remove.className = 'no-print text-xs font-semibold text-red-500 hover:underline';
-                            remove.textContent = 'Quitar';
-                            remove.setAttribute('aria-label', `Quitar documento ${archiveDocument.name}`);
-                            remove.addEventListener('click', () => deleteArchiveDocument(archiveDocument.id));
-                            row.appendChild(remove);
-                        }
+                    }
+                    if (!archiveDocument.managedByFinance) {
+                        const remove = document.createElement('button');
+                        remove.type = 'button';
+                        remove.className = 'no-print text-xs font-semibold text-red-500 hover:underline';
+                        remove.textContent = 'Quitar';
+                        remove.setAttribute('aria-label', `Quitar documento ${archiveDocument.name}`);
+                        remove.addEventListener('click', () => deleteArchiveDocument(archiveDocument.id));
+                        row.appendChild(remove);
                     }
                     list.appendChild(row);
                 });
@@ -1972,34 +2213,57 @@
 
         window.addEventListener('afterprint', () => document.body.classList.remove('printing-selected'));
 
-        function deleteArchiveDocument(documentId) {
+        async function deleteArchiveDocument(documentId) {
             const index = documents.findIndex(item => item.id === documentId);
             if (index < 0) return;
+            const archiveDocument = documents[index];
+            try {
+                if (archiveDocument.managedByServer) {
+                    await requestApi(`/api/admin/archive/documents/${encodeURIComponent(documentId)}`, {
+                        method: 'DELETE'
+                    });
+                }
+            } catch (error) {
+                showArchiveStatus(error.message, true);
+                return;
+            }
             const [removed] = documents.splice(index, 1);
-            if (removed.url) URL.revokeObjectURL(removed.url);
+            if (removed.url?.startsWith('blob:')) URL.revokeObjectURL(removed.url);
             renderArchive();
+            showArchiveStatus('Documento eliminado del archivo.');
         }
 
-        function addLocalArchiveFile(file) {
+        async function addLocalArchiveFile(file) {
             if (!file) return;
-            const folderId = Number(document.getElementById('archive-upload-folder').value);
+            const folderId = document.getElementById('archive-upload-folder').value;
             if (!archiveFolders.some(folder => folder.id === folderId)) {
-                window.alert('Crea o selecciona una carpeta válida para guardar el archivo.');
+                showArchiveStatus('Crea o selecciona una carpeta válida para guardar el archivo.', true);
                 return;
             }
             if (documents.some(document => document.folderId === folderId && document.name.toLocaleLowerCase() === file.name.toLocaleLowerCase())) {
-                window.alert('Ya existe un documento con ese nombre en la carpeta seleccionada.');
+                showArchiveStatus('Ya existe un documento con ese nombre en la carpeta seleccionada.', true);
                 return;
             }
-            documents.push({
-                id: nextDocumentId++,
-                name: file.name,
-                folderId,
-                type: file.type,
-                size: file.size,
-                url: URL.createObjectURL(file)
-            });
-            renderArchive();
+            if (file.size > 4 * 1024 * 1024) {
+                showArchiveStatus('El documento supera el límite de 4 MB.', true);
+                return;
+            }
+            try {
+                const { document: savedDocument } = await requestApi('/api/admin/archive/documents', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        filename: file.name,
+                        folderId,
+                        mimeType: file.type || 'application/octet-stream',
+                        content: await archiveFileToBase64(file)
+                    })
+                });
+                documents.push(savedDocument);
+                renderArchive();
+                showArchiveStatus('Documento guardado correctamente en el archivo.');
+            } catch (error) {
+                showArchiveStatus(error.message, true);
+            }
         }
 
         function toDateKey(date) {
@@ -2277,7 +2541,7 @@
             }
         });
 
-        document.getElementById('folder-form').addEventListener('submit', event => {
+        document.getElementById('folder-form').addEventListener('submit', async event => {
             event.preventDefault();
             const name = document.getElementById('folder-name').value.trim();
             if (!name) {
@@ -2288,27 +2552,51 @@
                 showFormError('folder-form-error', 'Ya existe una carpeta con ese nombre.');
                 return;
             }
-            archiveFolders.push({ id: nextFolderId++, name });
-            closeFolderModal();
-            renderArchive();
+            const submitButton = event.currentTarget.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            try {
+                const { folder } = await requestApi('/api/admin/archive/folders', {
+                    method: 'POST',
+                    body: JSON.stringify({ name })
+                });
+                archiveFolders.push(folder);
+                closeFolderModal();
+                renderArchive();
+                showArchiveStatus('Carpeta guardada correctamente.');
+            } catch (error) {
+                showFormError('folder-form-error', error.message);
+            } finally {
+                submitButton.disabled = false;
+            }
         });
 
-        document.getElementById('document-form').addEventListener('submit', event => {
+        document.getElementById('document-form').addEventListener('submit', async event => {
             event.preventDefault();
             const name = document.getElementById('document-name').value.trim();
-            const folderId = Number(document.getElementById('document-folder').value);
+            const folderId = document.getElementById('document-folder').value;
             if (!name || !archiveFolders.some(folder => folder.id === folderId)) {
                 showFormError('document-form-error', 'Ingresa un nombre y selecciona una carpeta válida.');
                 return;
             }
-            if (documents.some(document => document.folderId === folderId && document.name.toLocaleLowerCase() === name.toLocaleLowerCase())) {
-                showFormError('document-form-error', 'Ya existe un documento con ese nombre en la carpeta seleccionada.');
-                return;
+            const submitButton = event.currentTarget.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            try {
+                const { document: savedDocument } = await requestApi('/api/admin/archive/documents', {
+                    method: 'POST',
+                    body: JSON.stringify({ filename: name, folderId })
+                });
+                documents.push(savedDocument);
+                closeDocumentModal();
+                renderArchive();
+                showArchiveStatus('Documento guardado correctamente.');
+            } catch (error) {
+                showFormError('document-form-error', error.message);
+            } finally {
+                submitButton.disabled = false;
             }
-            documents.push({ id: nextDocumentId++, name, folderId });
-            closeDocumentModal();
-            renderArchive();
         });
+
+        document.getElementById('archive-fields-form').addEventListener('submit', saveArchiveFields);
 
         document.getElementById('archive-file-input').addEventListener('change', event => {
             const [file] = event.target.files;
@@ -2370,6 +2658,7 @@
                 if (modal.id === 'client-modal') closeClientModal();
                 if (modal.id === 'folder-modal') closeFolderModal();
                 if (modal.id === 'document-modal') closeDocumentModal();
+                if (modal.id === 'archive-fields-modal') closeArchiveFieldsModal();
                 if (modal.id === 'worker-documents-modal') closeWorkerDocumentsModal();
                 if (modal.id === 'task-modal') closeTaskModal();
             });
@@ -2386,6 +2675,7 @@
             if (!document.getElementById('client-modal').classList.contains('hidden')) closeClientModal();
             if (!document.getElementById('folder-modal').classList.contains('hidden')) closeFolderModal();
             if (!document.getElementById('document-modal').classList.contains('hidden')) closeDocumentModal();
+            if (!document.getElementById('archive-fields-modal').classList.contains('hidden')) closeArchiveFieldsModal();
             if (!document.getElementById('worker-documents-modal').classList.contains('hidden')) closeWorkerDocumentsModal();
             if (!document.getElementById('task-modal').classList.contains('hidden')) closeTaskModal();
         });
@@ -2765,7 +3055,7 @@
             documents.push({
                 id,
                 name: filename,
-                folderId: 5,
+                folderId: 'control-mensual',
                 type: 'application/json',
                 url: URL.createObjectURL(new Blob([content], { type: 'application/json' })),
                 managedByFinance: true
@@ -3604,6 +3894,7 @@
             adminApp.style.display = 'flex';
             document.getElementById('admin-user-name').textContent = user.display_name;
             document.getElementById('admin-user-login').textContent = user.username;
+            loadArchive();
             loadOrganizationWorkers();
             loadAttendanceReports();
             if (!attendanceMap && window.L) {
@@ -3804,7 +4095,7 @@
         document.getElementById('nav-attendance').addEventListener('click', () => {
             if (attendanceMap) window.setTimeout(() => attendanceMap.invalidateSize(), 0);
         });
-        document.getElementById('nav-archive').addEventListener('click', loadAttendanceReports);
+        document.getElementById('nav-attendance').addEventListener('click', loadAttendanceReports);
         document.getElementById('attendance-edit-form').addEventListener('submit', saveAttendanceEdit);
         document.getElementById('attendance-edit-close').addEventListener('click', closeAttendanceEdit);
         document.getElementById('attendance-edit-cancel').addEventListener('click', closeAttendanceEdit);
