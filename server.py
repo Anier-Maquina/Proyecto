@@ -36,6 +36,7 @@ PBKDF2_ITERATIONS = 310_000
 COOKIE_NAME = "control_horario_session"
 MAX_REQUEST_BYTES = 16_384
 MAX_SIGNING_DOCUMENT_BYTES = 10 * 1024 * 1024
+MAX_ARCHIVE_DOCUMENT_BYTES = 4 * 1024 * 1024
 MAX_JOB_APPLICATION_CV_BYTES = 4 * 1024 * 1024
 JOB_APPLICATION_LIMIT = 5
 JOB_APPLICATION_WINDOW = 15 * 60
@@ -144,6 +145,25 @@ def write_text_atomically(path, content):
         with tempfile.NamedTemporaryFile(
             mode="w",
             encoding="utf-8",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as temporary_file:
+            temporary_path = Path(temporary_file.name)
+            temporary_file.write(content)
+        os.replace(temporary_path, path)
+    finally:
+        if temporary_path and temporary_path.exists():
+            temporary_path.unlink()
+
+
+def write_bytes_atomically(path, content):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="wb",
             dir=path.parent,
             prefix=f".{path.name}.",
             suffix=".tmp",
@@ -585,6 +605,37 @@ def initialize_database():
             )
             """,
             """
+            CREATE TABLE IF NOT EXISTS archive_folders (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS archive_documents (
+                id TEXT PRIMARY KEY,
+                folder_id TEXT NOT NULL REFERENCES archive_folders(id) ON DELETE CASCADE,
+                filename TEXT NOT NULL,
+                storage_name TEXT UNIQUE,
+                mime_type TEXT NOT NULL,
+                size INTEGER NOT NULL DEFAULT 0,
+                editable_fields_json TEXT NOT NULL DEFAULT '[]',
+                created_at TEXT NOT NULL
+            )
+            """,
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS archive_folders_name_nocase
+                ON archive_folders (LOWER(name))
+            """,
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS archive_documents_folder_filename_nocase
+                ON archive_documents (folder_id, LOWER(filename))
+            """,
+            """
+            CREATE INDEX IF NOT EXISTS archive_documents_folder
+                ON archive_documents (folder_id, created_at DESC)
+            """,
+            """
             CREATE TABLE IF NOT EXISTS quote_requests (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
@@ -638,6 +689,21 @@ def initialize_database():
         )
         for statement in schema_statements:
             connection.execute(statement)
+
+        for folder_id, folder_name in (
+            ("general", "General"),
+            ("recursos-humanos", "Recursos Humanos"),
+            ("operaciones", "Operaciones"),
+            ("control-mensual", "control mensual de gastos e ingresos"),
+        ):
+            connection.execute(
+                """
+                INSERT INTO archive_folders (id, name, created_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT DO NOTHING
+                """,
+                (folder_id, folder_name, utc_now()),
+            )
 
         if DATABASE_URL:
             connection.execute(
@@ -1035,7 +1101,7 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def send_file(self, status, content, content_type, filename=None):
+    def send_file(self, status, content, content_type, filename=None, inline=False, extra_headers=None):
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(content)))
@@ -1043,7 +1109,11 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
         self.send_header("X-Content-Type-Options", "nosniff")
         if filename:
             safe_filename = re.sub(r"[^A-Za-z0-9._-]", "_", filename)
-            self.send_header("Content-Disposition", f'attachment; filename="{safe_filename}"')
+            disposition = "inline" if inline else "attachment"
+            self.send_header("Content-Disposition", f'{disposition}; filename="{safe_filename}"')
+        if extra_headers:
+            for name, value in extra_headers.items():
+                self.send_header(name, value)
         self.end_headers()
         self.wfile.write(content)
 
@@ -1146,6 +1216,102 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
                 self.send_json(500, {"error": "No se pudieron cargar los clientes."})
                 return
             self.send_json(200, {"clients": [dict(row) for row in rows]})
+            return
+        if path == "/api/admin/archive":
+            if not self.require_role("admin"):
+                return
+            try:
+                with database() as connection:
+                    folders = connection.execute(
+                        "SELECT id, name FROM archive_folders ORDER BY LOWER(name), id"
+                    ).fetchall()
+                    rows = connection.execute(
+                        """
+                        SELECT id, folder_id, filename, storage_name, mime_type,
+                               size, editable_fields_json
+                        FROM archive_documents
+                        ORDER BY LOWER(filename), created_at DESC
+                        """
+                    ).fetchall()
+                documents = []
+                for row in rows:
+                    item = {
+                        "id": row["id"],
+                        "folderId": row["folder_id"],
+                        "name": row["filename"],
+                        "type": row["mime_type"],
+                        "size": row["size"],
+                        "editableFields": json.loads(row["editable_fields_json"]),
+                        "managedByServer": True,
+                    }
+                    if row["storage_name"]:
+                        item["url"] = f"/api/admin/archive/documents/{row['id']}/content"
+                    documents.append(item)
+            except DATABASE_ERRORS + (json.JSONDecodeError, TypeError):
+                self.send_json(500, {"error": "No se pudo cargar el archivo documental."})
+                return
+            self.send_json(
+                200,
+                {
+                    "folders": [dict(folder) for folder in folders],
+                    "documents": documents,
+                },
+            )
+            return
+        archive_content_match = re.fullmatch(
+            r"/api/admin/archive/documents/([a-f0-9]{32})/content",
+            path,
+        )
+        if archive_content_match:
+            if not self.require_role("admin"):
+                return
+            try:
+                with database() as connection:
+                    row = connection.execute(
+                        """
+                        SELECT filename, storage_name, mime_type
+                        FROM archive_documents WHERE id = ?
+                        """,
+                        (archive_content_match.group(1),),
+                    ).fetchone()
+                if not row:
+                    self.send_json(404, {"error": "No se encontró el documento solicitado."})
+                    return
+                if not row["storage_name"]:
+                    self.send_json(404, {"error": "Este registro no contiene un archivo."})
+                    return
+                file_path = DATABASE_PATH.parent / "archivo_documental" / row["storage_name"]
+                content = file_path.read_bytes()
+            except OSError:
+                self.send_json(500, {"error": "No se pudo leer el documento del archivo."})
+                return
+            except DATABASE_ERRORS:
+                self.send_json(500, {"error": "No se pudo consultar el documento del archivo."})
+                return
+
+            mime_type = row["mime_type"]
+            inline_types = {
+                "application/pdf",
+                "image/avif",
+                "image/gif",
+                "image/jpeg",
+                "image/png",
+                "image/webp",
+                "text/html",
+            }
+            headers = {}
+            if mime_type == "text/html":
+                headers["Content-Security-Policy"] = (
+                    "sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:"
+                )
+            self.send_file(
+                200,
+                content,
+                mime_type,
+                row["filename"],
+                inline=mime_type in inline_types,
+                extra_headers=headers,
+            )
             return
         if path == "/api/admin/quote-requests":
             if not self.require_role("admin"):
@@ -1484,10 +1650,39 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
         path = urlparse(self.path).path
         quote_match = re.fullmatch(r"/api/admin/quote-requests/([a-f0-9]{32})", path)
         application_match = re.fullmatch(r"/api/admin/job-applications/([a-f0-9]{32})", path)
-        if not quote_match and not application_match:
+        archive_document_match = re.fullmatch(
+            r"/api/admin/archive/documents/([a-f0-9]{32})",
+            path,
+        )
+        if not quote_match and not application_match and not archive_document_match:
             self.send_json(404, {"error": "Ruta no encontrada."})
             return
         if not self.require_role("admin"):
+            return
+        if archive_document_match:
+            try:
+                with database() as connection:
+                    row = connection.execute(
+                        "SELECT storage_name FROM archive_documents WHERE id = ?",
+                        (archive_document_match.group(1),),
+                    ).fetchone()
+                    if not row:
+                        self.send_json(404, {"error": "No se encontró el documento."})
+                        return
+                    connection.execute(
+                        "DELETE FROM archive_documents WHERE id = ?",
+                        (archive_document_match.group(1),),
+                    )
+                if row["storage_name"]:
+                    file_path = DATABASE_PATH.parent / "archivo_documental" / row["storage_name"]
+                    file_path.unlink(missing_ok=True)
+            except DATABASE_ERRORS:
+                self.send_json(500, {"error": "No se pudo eliminar el documento del archivo."})
+                return
+            except OSError:
+                self.send_json(500, {"error": "El documento se eliminó, pero no se pudo borrar su archivo."})
+                return
+            self.send_json(200, {"ok": True})
             return
         if quote_match:
             try:
@@ -1659,6 +1854,8 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
             max_bytes = (
                 (MAX_SIGNING_DOCUMENT_BYTES * 4 // 3) + 16_384
                 if path == "/api/admin/signing/documents"
+                else (MAX_ARCHIVE_DOCUMENT_BYTES * 4 // 3) + 256_000
+                if path == "/api/admin/archive/documents"
                 else (MAX_JOB_APPLICATION_CV_BYTES * 4 // 3) + 32_768
                 if path == "/api/job-applications"
                 else MAX_REQUEST_BYTES
@@ -1666,6 +1863,160 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
             payload = self.read_json(max_bytes=max_bytes)
         except ValueError as error:
             self.send_json(400, {"error": str(error)})
+            return
+
+        if path == "/api/admin/archive/folders":
+            if not self.require_role("admin"):
+                return
+            name = payload.get("name")
+            if not isinstance(name, str) or not name.strip() or len(name.strip()) > 100:
+                self.send_json(400, {"error": "Escribe un nombre de carpeta de hasta 100 caracteres."})
+                return
+            folder = {
+                "id": secrets.token_hex(16),
+                "name": " ".join(name.split()),
+            }
+            try:
+                with database() as connection:
+                    connection.execute(
+                        """
+                        INSERT INTO archive_folders (id, name, created_at)
+                        VALUES (?, ?, ?)
+                        """,
+                        (folder["id"], folder["name"], utc_now()),
+                    )
+            except DATABASE_INTEGRITY_ERRORS:
+                self.send_json(409, {"error": "Ya existe una carpeta con ese nombre."})
+                return
+            except DATABASE_ERRORS:
+                self.send_json(500, {"error": "No se pudo guardar la carpeta."})
+                return
+            self.send_json(201, {"folder": folder})
+            return
+
+        if path == "/api/admin/archive/documents":
+            if not self.require_role("admin"):
+                return
+            filename = payload.get("filename")
+            folder_id = payload.get("folderId")
+            mime_type = payload.get("mimeType", "application/octet-stream")
+            content_base64 = payload.get("content")
+            editable_fields = payload.get("editableFields", [])
+            if (
+                not isinstance(filename, str)
+                or not filename.strip()
+                or len(filename) > 255
+                or not isinstance(folder_id, str)
+                or not re.fullmatch(
+                    r"[a-f0-9]{32}|general|recursos-humanos|operaciones|control-mensual",
+                    folder_id,
+                )
+                or not isinstance(mime_type, str)
+                or not re.fullmatch(
+                    r"[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,126}/[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,126}",
+                    mime_type,
+                )
+                or (content_base64 is not None and not isinstance(content_base64, str))
+                or not isinstance(editable_fields, list)
+                or len(editable_fields) > 100
+            ):
+                self.send_json(400, {"error": "Revisa el nombre, la carpeta y los datos del documento."})
+                return
+
+            filename = re.split(r"[\\/]", filename.strip())[-1]
+            filename = re.sub(r"[\x00-\x1f\x7f]", "", filename).strip()
+            if not filename or len(filename) > 255:
+                self.send_json(400, {"error": "El nombre del documento no es válido."})
+                return
+
+            cleaned_fields = []
+            for field in editable_fields:
+                if (
+                    not isinstance(field, dict)
+                    or not isinstance(field.get("label"), str)
+                    or not field["label"].strip()
+                    or len(field["label"].strip()) > 100
+                    or not isinstance(field.get("value"), str)
+                    or len(field["value"]) > 2000
+                ):
+                    self.send_json(400, {"error": "Los campos editables del documento no son válidos."})
+                    return
+                cleaned_fields.append(
+                    {
+                        "label": field["label"].strip(),
+                        "value": field["value"],
+                    }
+                )
+
+            content = None
+            if content_base64 is not None:
+                try:
+                    content = base64.b64decode(content_base64, validate=True)
+                except (ValueError, base64.binascii.Error):
+                    self.send_json(400, {"error": "El contenido del documento no tiene un formato válido."})
+                    return
+                if len(content) > MAX_ARCHIVE_DOCUMENT_BYTES:
+                    self.send_json(413, {"error": "El documento supera el límite de 4 MB."})
+                    return
+
+            document_id = secrets.token_hex(16)
+            storage_name = f"{document_id}.bin" if content is not None else None
+            file_path = DATABASE_PATH.parent / "archivo_documental" / storage_name if storage_name else None
+            try:
+                with database() as connection:
+                    folder = connection.execute(
+                        "SELECT id FROM archive_folders WHERE id = ?",
+                        (folder_id,),
+                    ).fetchone()
+                    if not folder:
+                        self.send_json(400, {"error": "La carpeta seleccionada ya no existe."})
+                        return
+                    if file_path:
+                        write_bytes_atomically(file_path, content)
+                    connection.execute(
+                        """
+                        INSERT INTO archive_documents
+                            (id, folder_id, filename, storage_name, mime_type, size,
+                             editable_fields_json, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            document_id,
+                            folder_id,
+                            filename,
+                            storage_name,
+                            mime_type.lower(),
+                            len(content) if content is not None else 0,
+                            json.dumps(cleaned_fields, ensure_ascii=False),
+                            utc_now(),
+                        ),
+                    )
+            except DATABASE_INTEGRITY_ERRORS:
+                if file_path and file_path.exists():
+                    file_path.unlink()
+                self.send_json(409, {"error": "Ya existe un documento con ese nombre en la carpeta."})
+                return
+            except DATABASE_ERRORS:
+                if file_path and file_path.exists():
+                    file_path.unlink()
+                self.send_json(500, {"error": "No se pudo guardar el documento."})
+                return
+            except OSError:
+                self.send_json(500, {"error": "No se pudo guardar el archivo del documento."})
+                return
+
+            document = {
+                "id": document_id,
+                "folderId": folder_id,
+                "name": filename,
+                "type": mime_type.lower(),
+                "size": len(content) if content is not None else 0,
+                "editableFields": cleaned_fields,
+                "managedByServer": True,
+            }
+            if storage_name:
+                document["url"] = f"/api/admin/archive/documents/{document_id}/content"
+            self.send_json(201, {"document": document})
             return
 
         if path == "/api/quote-requests":
@@ -2447,8 +2798,8 @@ class AttendanceHandler(SimpleHTTPRequestHandler):
 
     def do_OPTIONS(self):
         self.send_response(204)
-        self.send_header("Allow", "GET, POST, PUT, OPTIONS")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
+        self.send_header("Allow", "GET, POST, PUT, DELETE, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.send_header("Access-Control-Max-Age", "600")
         self.send_header("Content-Length", "0")
